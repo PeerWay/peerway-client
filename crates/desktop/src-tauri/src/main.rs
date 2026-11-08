@@ -6,11 +6,11 @@
 // privacidad de otras personas. El cliente podría abrirse en el futuro.
 
 use anyhow::{Context, Result};
+use peerway_core::code;
 use peerway_node::config::{load_config, Paths};
 use peerway_node::local_api;
 use peerway_node::node::Node;
 use peerway_node::state::{TransferView, UiEvent};
-use peerway_core::code;
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -42,7 +42,8 @@ struct UpdateMenu {
 }
 
 static UPDATE_RUNNING: AtomicBool = AtomicBool::new(false);
-static MANUAL_UPDATE_CHECK: OnceLock<Mutex<Option<(Instant, Option<UpdateInfo>)>>> = OnceLock::new();
+static MANUAL_UPDATE_CHECK: OnceLock<Mutex<Option<(Instant, Option<UpdateInfo>)>>> =
+    OnceLock::new();
 
 fn manual_update_check() -> &'static Mutex<Option<(Instant, Option<UpdateInfo>)>> {
     MANUAL_UPDATE_CHECK.get_or_init(|| Mutex::new(None))
@@ -203,7 +204,11 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     let open = MenuItem::with_id(
         app,
         "open",
-        if english { "Open PeerWay" } else { "Abrir PeerWay" },
+        if english {
+            "Open PeerWay"
+        } else {
+            "Abrir PeerWay"
+        },
         true,
         None::<&str>,
     )?;
@@ -221,7 +226,11 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     let update = MenuItem::with_id(
         app,
         "install_update",
-        if english { "Update…" } else { "Actualizar…" },
+        if english {
+            "Update…"
+        } else {
+            "Actualizar…"
+        },
         false,
         None::<&str>,
     )?;
@@ -296,11 +305,11 @@ fn deep_link_code(args: &[String]) -> Option<String> {
             continue;
         };
         let rest = rest.trim_start_matches('/');
-        let candidate = rest.split_once("code=").map(|(_, tail)| tail).unwrap_or(rest);
-        let candidate = candidate
-            .split(['&', '#', '?'])
-            .next()
-            .unwrap_or_default();
+        let candidate = rest
+            .split_once("code=")
+            .map(|(_, tail)| tail)
+            .unwrap_or(rest);
+        let candidate = candidate.split(['&', '#', '?']).next().unwrap_or_default();
         if let Some(normalized) = code::normalize(candidate) {
             return Some(normalized);
         }
@@ -570,7 +579,11 @@ fn spawn_updater(app: AppHandle) {
     });
 }
 
-async fn check_updates(app: &AppHandle, install: bool, announce: bool) -> Result<Option<UpdateInfo>> {
+async fn check_updates(
+    app: &AppHandle,
+    install: bool,
+    announce: bool,
+) -> Result<Option<UpdateInfo>> {
     if UPDATE_RUNNING.swap(true, Ordering::SeqCst) {
         return Ok(None);
     }
@@ -693,7 +706,10 @@ fn notify_incoming(app: &AppHandle, transfer: &TransferView) {
             count, transfer.peer_name
         )
     } else {
-        format!("{} quiere enviarte {} archivo(s)", transfer.peer_name, count)
+        format!(
+            "{} quiere enviarte {} archivo(s)",
+            transfer.peer_name, count
+        )
     };
     use tauri_plugin_notification::NotificationExt;
     let _ = app
