@@ -1,0 +1,12 @@
+{
+  "name": "peerway-desktop",
+  "private": true,
+  "version": "0.1.23",
+  "scripts": {
+    "tauri": "tauri",
+    "build": "tauri build --bundles nsis"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "PeerWay",
+  "version": "0.1.23",
+  "identifier": "io.peerway.desktop",
+  "build": {
+    "frontendDist": "../../../web"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "createUpdaterArtifacts": true,
+    "publisher": "PeerWay",
+    "copyright": "Copyright © 2026 PeerWay",
+    "category": "Utility",
+    "shortDescription": "Transferencia P2P de archivos con códigos",
+    "longDescription": "PeerWay transfiere archivos directamente entre equipos con cifrado de extremo a extremo, descubrimiento LAN, NAT traversal y relay HTTPS de último recurso.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "signingIdentity": "-",
+      "minimumSystemVersion": "12.0",
+      "dmg": {
+        "background": "dmg/background.png",
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        },
+        "appPosition": {
+          "x": 180,
+          "y": 190
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 190
+        }
+      }
+    },
+    "windows": {
+      "signCommand": {
+        "cmd": "powershell",
+        "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "../../../scripts/sign-windows.ps1", "%1"]
+      },
+      "nsis": {
+        "installerHooks": "./installer-hooks.nsh"
+      }
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["peerway"]
+      }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENDQjNDM0JDREY0MjgxQTEKUldTaGdVTGZ2TU96ekdCdjlvOGFwSWZESmQ4NUVqMW5aTkwwMTN1cERyWldMS1J3OGdYQUQ5QVIK",
+      "endpoints": [
+        "https://www.peerway.me/updates/{{target}}/latest.json",
+        "https://www.peerway.me/updates/latest.json"
+      ]
+    }
+  }
+}

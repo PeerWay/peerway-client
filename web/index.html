@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="peerway-token" content="__PEERWAY_TOKEN__">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0c0d0f" media="(prefers-color-scheme: dark)">
+  <title>PeerWay</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <svg class="svg-defs" aria-hidden="true">
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19a4.5 4.5 0 0 0 1.76-8.65A7 7 0 0 0 5.06 9.5 5 5 0 0 0 6.5 19h11Z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="i-files" viewBox="0 0 24 24"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2Z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></symbol>
+    <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+    <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14M19 12l-7 7-7-7"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
+    <symbol id="i-window-min" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-window-max" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></symbol>
+    <symbol id="i-window-restore" viewBox="0 0 24 24"><rect x="8" y="3" width="13" height="13" rx="1"/><path d="M3 8v13h13"/></symbol>
+    <symbol id="i-window-close" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"/></symbol>
+        <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+        <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="m3 3 18 18"/><path d="M10.6 10.6a3 3 0 0 0 4.2 4.2"/><path d="M9.9 5.2A9.9 9.9 0 0 1 12 5c6.5 0 10 7 10 7a17.2 17.2 0 0 1-2.4 3.3M6.1 6.1A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 4.2-.9"/></symbol>
+  </svg>
+
+  <div class="window-titlebar" id="windowTitlebar" data-tauri-drag-region>
+    <div class="window-brand" data-tauri-drag-region>
+      <span class="window-mark"><svg><use href="#i-send"/></svg></span>
+      <span class="window-name">PeerWay</span>
+      <span class="window-beta">beta</span>
+      <span class="window-version" id="windowVersion">0.1.23</span>
+    </div>
+    <div class="window-controls">
+      <button class="window-btn" id="windowMin" title="Minimizar" aria-label="Minimizar"><svg><use href="#i-window-min"/></svg></button>
+      <button class="window-btn" id="windowMax" title="Maximizar" aria-label="Maximizar"><svg id="windowMaxIcon"><use href="#i-window-max"/></svg></button>
+      <button class="window-btn close" id="windowClose" title="Cerrar a la bandeja" aria-label="Cerrar a la bandeja"><svg><use href="#i-window-close"/></svg></button>
+    </div>
+  </div>
+
+  <div class="ambient" aria-hidden="true"></div>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark"><svg><use href="#i-send"/></svg></div>
+        <div class="brand-text">PeerWay <span>beta</span></div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active" data-view="send">
+          <svg><use href="#i-send"/></svg><span>Transferir</span>
+        </button>
+        <button class="nav-item" data-view="receive">
+          <svg><use href="#i-inbox"/></svg><span>Actividad</span>
+          <span class="nav-badge hidden" id="incomingBadge">0</span>
+        </button>
+        <button class="nav-item" data-view="contacts">
+          <svg><use href="#i-shield"/></svg><span>Contactos</span>
+        </button>
+        <button class="nav-item" data-view="settings">
+          <svg><use href="#i-settings"/></svg><span>Ajustes</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+
+      <div class="sidebar-meta">
+        <button class="nav-item secondary" data-view="cloud">
+          <svg><use href="#i-cloud"/></svg><span>Nube</span>
+        </button>
+        <button class="mini-account" id="accountMini" type="button">
+          <div class="avatar"><svg><use href="#i-user"/></svg></div>
+          <div>
+            <strong id="accountName">Modo temporal</strong>
+            <span id="accountPlan">Inicia sesión para conservar tu código</span>
+          </div>
+        </button>
+        <div class="status-row">
+          <span class="dot" id="serverDot"></span>
+          <span id="serverLabel">Conectando…</span>
+          <span class="status-sep">·</span>
+          <span id="lanCount">0 en la red</span>
+        </div>
+        <div class="version">PeerWay <span id="versionText">0.1.23</span></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h1 id="pageTitle">Transferir</h1>
+          <p id="pageSubtitle">Elige un equipo o escribe su código.</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="mini-code">
+            <span class="mini-code-label">Tu código</span>
+            <div class="mini-code-row">
+              <strong id="bigCode">••••-••••</strong>
+              <button class="icon-btn" id="toggleCode" title="Mostrar código" aria-label="Mostrar código"><svg><use href="#i-eye"/></svg></button>
+              <button class="icon-btn" id="copyCodeBtn" title="Copiar código" aria-label="Copiar código"><svg><use href="#i-copy"/></svg></button>
+              <button class="icon-btn" id="copyLinkBtn" title="Copiar enlace" aria-label="Copiar enlace"><svg><use href="#i-globe"/></svg></button>
+              <button class="icon-btn hidden" id="rotateCodeBtn" title="Rotar código" aria-label="Rotar código"><svg><use href="#i-refresh"/></svg></button>
+            </div>
+          </div>
+          <button class="icon-btn notify-btn" id="notifyBtn" title="Notificaciones" aria-label="Notificaciones">
+            <svg><use href="#i-bell"/></svg>
+            <span class="notify-badge hidden" id="notifyBadge">0</span>
+          </button>
+          <div class="notify-panel hidden" id="notifyPanel">
+            <div class="notify-head"><strong>Notificaciones</strong><button class="link-btn" id="notifyClear">Limpiar</button></div>
+            <div class="notify-list" id="notifyList"></div>
+            <div class="empty-mini hidden" id="notifyEmpty">No hay notificaciones.</div>
+          </div>
+        </div>
+      </header>
+
+      <div class="update-banner hidden" id="updateBanner">
+        <svg><use href="#i-download"/></svg>
+        <div class="update-copy">
+          <span class="update-kind hidden" id="updateKind">Actualización de seguridad</span>
+          <strong id="updateTitle">Actualización disponible.</strong>
+          <span id="updateText">Puedes instalarla ahora o desde la bandeja del sistema.</span>
+        </div>
+        <div class="update-actions">
+          <button class="btn primary small" id="updateInstallBtn">Instalar ahora</button>
+          <a class="btn primary small hidden" id="updateManualBtn" data-external href="https://www.peerway.me/download">Descargar manualmente</a>
+          <button class="btn ghost small" id="updateLaterBtn">Más tarde</button>
+        </div>
+      </div>
+
+      <!-- TRANSFERIR -->
+      <section class="view" id="view-send">
+        <div class="transfer-home">
+          <div class="transfer-main">
+          <section class="active-section hidden" id="activeSection">
+            <div class="section-title">
+              <h2>En curso</h2>
+              <button class="btn ghost small" id="refreshTransfers"><svg><use href="#i-refresh"/></svg> Actualizar</button>
+            </div>
+            <div class="transfer-grid" id="activeTransfers"></div>
+            <div class="empty-state hidden" id="activeEmpty">
+              <svg><use href="#i-send"/></svg>
+              <p>No hay envíos en curso.</p>
+            </div>
+          </section>
+
+          <div class="card nearby-card">
+            <div class="card-head">
+              <div>
+                <h2>Equipos cerca de ti</h2>
+              </div>
+              <span class="count-pill" id="lanPeerCount">0</span>
+            </div>
+            <div id="lanPeers" class="lan-list peer-grid"></div>
+            <div class="empty-mini" id="lanEmpty"><svg><use href="#i-wifi"/></svg><span>Buscando equipos en tu red…</span></div>
+          </div>
+
+          <div class="card send-card">
+            <div class="card-head">
+              <div>
+                <h2>Enviar archivos</h2>
+              </div>
+              <span class="secure-badge"><svg><use href="#i-lock"/></svg> Cifrado</span>
+            </div>
+
+            <label class="field-label" for="targetCode">Destinatarios</label>
+            <div class="recipient-add">
+              <div class="code-input-wrap">
+                <svg class="code-input-icon"><use href="#i-key"/></svg>
+                <input id="targetCode" class="code-input" inputmode="text" autocomplete="off" spellcheck="false" maxlength="10" placeholder="ABCD-EFGH">
+                <span class="code-ok hidden" id="codeOk"><svg><use href="#i-check"/></svg></span>
+              </div>
+              <button class="btn ghost small" id="addRecipient" type="button">Añadir</button>
+            </div>
+            <div class="recipient-chips hidden" id="recipientChips"></div>
+
+            <div class="dropzone" id="dropzone" tabindex="0" role="button">
+              <div class="dropzone-icon"><svg><use href="#i-arrow-up"/></svg></div>
+              <strong>Suelta archivos aquí</strong>
+              <span>o <button class="link" id="pickBtn" type="button">selecciona desde tu equipo</button></span>
+              <small>No se suben a la nube.</small>
+              <input type="file" id="localFileInput" class="hidden" multiple aria-label="Seleccionar archivos para enviar">
+            </div>
+
+            <div class="selected-files hidden" id="selectedFiles">
+              <div class="selected-head"><span id="selectedSummary">0 archivos</span><button class="link" id="clearFiles">Quitar todos</button></div>
+              <div class="file-list" id="fileList"></div>
+            </div>
+
+            <label class="field-label" for="sendComment">Comentario (opcional)</label>
+            <input id="sendComment" class="input" maxlength="200" placeholder="Para qué son estos archivos" disabled>
+
+            <div class="send-actions">
+              <button class="btn primary" id="sendBtn" disabled>
+                <svg><use href="#i-send"/></svg> Enviar archivos
+              </button>
+              <button class="btn ghost" id="shareWebBtn" disabled>
+                <svg><use href="#i-globe"/></svg> Crear enlace web
+              </button>
+            </div>
+            <div class="web-share hidden" id="webShare">
+              <p class="form-note">Válido 24 h y solo en tu red local. El archivo se sirve desde este equipo; no se sube a la nube.</p>
+              <div class="web-share-row">
+                <input id="webShareUrl" class="input" readonly>
+                <button class="btn ghost small" id="copyWebShare">Copiar</button>
+              </div>
+            </div>
+          </div>
+
+          <aside class="transfer-side">
+            <div class="card recent-card">
+              <div class="card-head"><div><h2>Envíos recientes</h2><p>Pulsa uno para volver a enviar.</p></div></div>
+              <div id="recentRecipients" class="recent-list"></div>
+              <div class="empty-mini small hidden" id="recentEmpty"><span>Todavía no enviaste archivos.</span></div>
+            </div>
+
+            <section class="received-section hidden" id="receivedSection">
+              <div class="section-title">
+                <h2>Recibidos recientemente</h2>
+                <button class="btn ghost small" id="openReceivedFolder"><svg><use href="#i-folder"/></svg> Abrir descargas</button>
+              </div>
+              <div class="received-list" id="receivedFiles"></div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ACTIVIDAD -->
+      <section class="view hidden" id="view-receive">
+        <div class="activity-grid">
+          <div class="card">
+            <div class="card-head"><div><h2>Solicitudes</h2><p>Acepta o rechaza cada envío.</p></div></div>
+            <div id="pendingOffers" class="offer-list"></div>
+            <div class="empty-mini hidden" id="pendingEmpty"><svg><use href="#i-inbox"/></svg><span>No hay solicitudes pendientes.</span></div>
+          </div>
+          <div class="card history-card">
+            <div class="card-head">
+              <div><h2>Historial</h2><p><span id="historyCount">0 transferencias</span></p></div>
+              <div class="history-head-actions">
+                <button class="btn ghost small" id="openFolderBtn"><svg><use href="#i-folder"/></svg> Abrir descargas</button>
+                <button class="btn ghost small" id="clearHistory"><svg><use href="#i-trash"/></svg> Borrar historial</button>
+              </div>
+            </div>
+            <div id="historyList" class="history-list"></div>
+            <div class="empty-mini hidden" id="historyEmpty"><svg><use href="#i-files"/></svg><span>Tu historial aparecerá aquí.</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NUBE -->
+      <section class="view hidden" id="view-cloud">
+        <div id="cloudLoggedOut">
+          <div class="cloud-hero">
+            <div class="cloud-copy">
+              <span class="eyebrow teal">NUBE PEERWAY</span>
+              <h2>Tu código permanente.<br>Tus archivos, en cualquier lugar.</h2>
+              <p>Transferir es gratis. La nube es opcional: durante la beta gratuita incluye 5 GB en total y cada archivo se elimina 30 días después de la subida.</p>
+              <div class="price-row"><span class="price" id="cloudPrice">Gratis</span><span class="price-note" id="cloudPriceNote">Beta gratuita · 5 GB en total · borrado a los 30 días</span></div>
+              <p class="cloud-free-note" id="cloudFreeNote">Beta gratuita: 5 GB en total; cada archivo se elimina 30 días después de la subida.</p>
+            </div>
+            <div class="cloud-plan">
+              <h3>Crear cuenta gratis</h3>
+              <p class="muted">Código permanente y 5 GB de nube gratis.</p>
+              <div class="seg-control" id="authTabs">
+                <button class="active" data-auth="register">Crear cuenta</button>
+                <button data-auth="login">Iniciar sesión</button>
+              </div>
+              <form id="authForm">
+                <label class="field-label" for="authUser">Usuario</label>
+                <input class="input" id="authUser" autocomplete="username" placeholder="usuario">
+                <p class="form-note">3–32 caracteres, sin espacios ni acentos: letras, números, punto, guion y guion bajo.</p>
+                <label class="field-label" for="authPass">Contraseña</label>
+                <input class="input" id="authPass" type="password" autocomplete="current-password" placeholder="mínimo 8 caracteres">
+                <div id="authEmailBlock">
+                  <label class="field-label" for="authEmail">Correo</label>
+                  <input class="input" id="authEmail" type="email" autocomplete="email" placeholder="tu@correo.com">
+                  <p class="form-note">Te enviaremos un enlace para confirmarlo. Para la nube hace falta confirmarlo.</p>
+                </div>
+                <p class="form-note auth-error hidden" id="authError" role="alert"></p>
+                <button class="btn primary wide" id="authSubmit" type="submit">Crear cuenta</button>
+                <button class="link-button" id="forgotPassword" type="button">¿Olvidaste tu contraseña?</button>
+                <p class="form-note" id="authNote">Tu identidad criptográfica se crea en este equipo. La contraseña solo protege tu cuenta.</p>
+              </form>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <div class="feature"><svg><use href="#i-lock"/></svg><strong>Cifrado</strong><span>Tus archivos van cifrados.</span></div>
+            <div class="feature"><svg><use href="#i-cloud"/></svg><strong id="cloudFeatureQuota">5 GB gratis · borrado a los 30 días</strong><span>Sube, lista y descarga desde la interfaz o la API.</span></div>
+            <div class="feature"><svg><use href="#i-key"/></svg><strong>Código permanente</strong><span>Tu código no cambia entre reinicios ni equipos.</span></div>
+          </div>
+        </div>
+
+        <div id="cloudLoggedIn" class="hidden cloud-dashboard">
+          <div class="cloud-side">
+          <div class="cloud-account card">
+            <div class="cloud-account-top">
+              <div class="cloud-account-main">
+                <div class="avatar large"><svg><use href="#i-user"/></svg></div>
+                <div><h2 id="cloudUsername">—</h2><p id="cloudAccountSub">Plan Gratis</p></div>
+              </div>
+              <div class="account-actions">
+                <button class="btn ghost" id="cloudLogout"><svg><use href="#i-logout"/></svg> Cerrar sesión</button>
+              </div>
+            </div>
+            <div class="display-name-row">
+              <label class="field-label" for="cloudDisplayName">Nombre visible</label>
+              <div class="display-name-controls">
+                <input class="input" id="cloudDisplayName" maxlength="40" placeholder="Tu nombre">
+                <button class="btn ghost small" id="saveDisplayName">Guardar</button>
+              </div>
+            </div>
+            <div class="display-name-row">
+              <label class="field-label" for="cloudEmail">Correo</label>
+              <div class="display-name-controls">
+                <input class="input" id="cloudEmail" type="email" placeholder="tu@correo.com">
+                <button class="btn ghost small" id="resendVerify">Enviar enlace</button>
+              </div>
+              <p class="verify-notice hidden" id="cloudEmailNotice">Tu correo aún no está confirmado. Pulsa «Enviar enlace» y revisa tu bandeja.</p>
+              <p class="form-note" id="cloudEmailState">Sin correo confirmado.</p>
+            </div>
+          </div>
+
+          <div id="cloudFree" class="upgrade-card free-beta-card">
+            <div class="upgrade-copy">
+              <span class="eyebrow amber">BETA GRATUITA</span>
+              <h2><span id="cloudFreeQuotaCopy">5 GB</span> gratis en la nube</h2>
+              <p>Durante la beta gratuita, tu cuenta incluye <span id="cloudFreeQuotaPoint">5 GB</span> de almacenamiento en total. Cada archivo se elimina automáticamente <span id="cloudFreeRetentionCopy">30 días</span> después de la subida.</p>
+              <div class="upgrade-points">
+                <span><svg><use href="#i-check"/></svg> <span id="cloudFreeQuotaPoint2">5 GB</span> incluidos</span>
+                <span><svg><use href="#i-check"/></svg> Borrado <span id="cloudFreeRetentionPoint">30 días</span> después de subir</span>
+                <span><svg><use href="#i-check"/></svg> Transferencias sin límite</span>
+                <span><svg><use href="#i-check"/></svg> Sin tarjeta ni suscripción</span>
+              </div>
+            </div>
+          </div>
+
+          <div id="cloudPaidOffer" class="upgrade-card hidden" data-paid-offer>
+            <div class="upgrade-copy">
+              <span class="eyebrow amber">PLAN PRO</span>
+              <h2>Más espacio para tus archivos</h2>
+              <p>Amplía tu nube y conserva los archivos mientras el plan esté activo.</p>
+              <div class="upgrade-points">
+                <span><svg><use href="#i-check"/></svg> <span id="cloudProQuotaCopy">100 GB</span> de almacenamiento</span>
+                <span><svg><use href="#i-check"/></svg> Descargas HTTPS</span>
+                <span><svg><use href="#i-check"/></svg> Sin límite de velocidad</span>
+              </div>
+            </div>
+            <div class="upgrade-box">
+              <div class="mini-price"><strong id="upgradePrice">$5</strong><span>/ 30 días</span></div>
+              <div id="paypalButtons" class="paypal-buttons hidden"></div>
+              <p class="form-note" id="paypalNote">Pago con PayPal. Pago único por 30 días; sin renovación automática.</p>
+              <div class="divider"><span>o activa una licencia</span></div>
+              <input class="input" id="licenseKey" placeholder="PEERWAY-XXXX-XXXX" aria-label="Licencia">
+              <button class="btn ghost wide" id="activateBtn"><svg><use href="#i-key"/></svg> Activar licencia</button>
+              <p class="form-note">La nube se activa al instante. Transferir sigue siendo gratis.</p>
+            </div>
+          </div>
+          </div>
+
+          <div id="cloudStorage" class="cloud-main hidden">
+            <div class="quota-card card">
+              <div class="quota-head">
+                <div><span class="eyebrow teal">TU NUBE</span><h2>Almacenamiento</h2></div>
+                <button class="btn primary" id="cloudUploadBtn"><svg><use href="#i-plus"/></svg> Subir archivo</button>
+                <input type="file" id="cloudFileInput" class="hidden" aria-label="Archivo para subir a la nube">
+              </div>
+              <div class="quota-bar"><span id="quotaFill"></span></div>
+              <div class="quota-meta"><span id="quotaText">0 B de 5 GB</span><span id="quotaPercent">0%</span></div>
+              <p class="cloud-retention" id="cloudRetentionNote"></p>
+              <p class="upload-error hidden" id="cloudUploadError" role="alert"></p>
+            </div>
+            <div class="section-title"><h2>Archivos en la nube</h2><button class="btn ghost small" id="cloudRefresh"><svg><use href="#i-refresh"/></svg> Actualizar</button></div>
+            <div class="card cloud-files-card">
+              <div id="cloudFiles" class="cloud-files"></div>
+              <div class="empty-mini hidden" id="cloudEmpty"><svg><use href="#i-cloud"/></svg><span>Tu nube está vacía.</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AJUSTES -->
+      <section class="view hidden" id="view-contacts">
+        <div class="card trusted-card">
+          <div class="card-head">
+            <div><h2>Contactos de confianza</h2><p>Pueden enviarte archivos sin pedir permiso.</p></div>
+            <button class="btn ghost small" id="toggleTrustedCodes"><svg><use href="#i-eye"/></svg> <span id="toggleTrustedLabel">Mostrar códigos</span></button>
+          </div>
+          <div class="trusted-input-row"><input class="input" id="trustCode" maxlength="10" placeholder="ABCD-EFGH" aria-label="Código de confianza"><button class="btn ghost" id="addTrust"><svg><use href="#i-plus"/></svg> Agregar</button></div>
+          <div id="trustedList" class="trusted-list"></div>
+          <div class="empty-mini small hidden" id="trustedEmpty"><span>No hay contactos de confianza.</span></div>
+        </div>
+      </section>
+
+      <section class="view hidden" id="view-settings">
+        <div class="two-col settings-grid">
+          <div class="card">
+            <div class="card-head"><div><h2>Este equipo</h2><p>Nombre visible y carpeta de descargas.</p></div></div>
+            <label class="field-label" for="setLanguage">Idioma / Language</label>
+            <select class="input" id="setLanguage">
+              <option value="es">Español</option>
+              <option value="en">English</option>
+            </select>
+            <label class="field-label" for="setDevice">Nombre del equipo</label>
+            <input class="input" id="setDevice" maxlength="48">
+            <label class="field-label" for="setDownload">Carpeta de descargas</label>
+            <input class="input" id="setDownload">
+            <label class="toggle-row"><input type="checkbox" id="setAutoTrust"><span><strong>Aceptar automáticamente contactos de confianza</strong><small>Solo para códigos que agregues como confiables.</small></span></label>
+            <label class="toggle-row"><input type="checkbox" id="setLan"><span><strong>Descubrimiento en la red local</strong><small>Permite encontrar otros equipos cercanos.</small></span></label>
+            <label class="toggle-row"><input type="checkbox" id="setAutoUpdate"><span><strong>Buscar actualizaciones automáticamente</strong><small>Se buscan en segundo plano. Tú decides cuándo instalarlas.</small></span></label>
+            <label class="toggle-row"><input type="checkbox" id="setAutostart"><span><strong>Iniciar con el equipo</strong><small>Se abre en la bandeja al iniciar sesión.</small></span></label>
+            <label class="toggle-row"><input type="checkbox" id="setTelemetry"><span><strong>Compartir estadísticas de uso</strong><small>Usa un identificador aleatorio de instalación. Incluye versión, plataforma, plan, si tienes sesión iniciada y contadores; no incluye archivos, nombres, códigos ni direcciones IP.</small></span></label>
+            <button class="btn primary" id="saveSettings"><svg><use href="#i-check"/></svg> Guardar cambios</button>
+            <button class="btn ghost small guide-link" id="showGuide"><svg><use href="#i-spark"/></svg> Ver la guía</button>
+          </div>
+
+          <div>
+            <div class="card update-card">
+              <div class="card-head"><div><h2>Actualizaciones</h2><p>Comprueba si hay una versión nueva. Tú decides cuándo instalarla.</p></div></div>
+              <div class="update-current"><strong id="settingsVersion">0.1.15</strong><span id="updateStatusText">Listo para comprobar.</span></div>
+              <button class="btn ghost small" id="checkUpdateBtn"><svg><use href="#i-refresh"/></svg> Buscar actualizaciones</button>
+            </div>
+
+            <div class="card sessions-card">
+              <div class="card-head">
+                <div><h2>Sesiones</h2><p>Equipos donde tu cuenta está abierta.</p></div>
+                <button class="btn ghost small" id="revokeOthers">Cerrar las demás sesiones</button>
+              </div>
+              <div id="sessionsList" class="sessions-list"></div>
+              <div class="empty-mini small hidden" id="sessionsEmpty"><span>No hay otras sesiones.</span></div>
+            </div>
+
+            <details class="advanced-settings">
+              <summary>Notificaciones, servicio y contactos</summary>
+              <div class="card notify-settings-card">
+              <div class="card-head"><div><h2>Notificaciones</h2><p>Avisos dentro de la app.</p></div></div>
+              <label class="toggle-row"><input type="checkbox" id="setNotifications"><span><strong>Notificaciones en la app</strong><small>Actualizaciones, transferencias y avisos importantes.</small></span></label>
+              <label class="toggle-row"><input type="checkbox" id="setNotifyUpdates"><span><strong>Actualizaciones</strong><small>Cuando haya una versión nueva o falle la actualización.</small></span></label>
+              <label class="toggle-row"><input type="checkbox" id="setNotifyTransfers"><span><strong>Transferencias</strong><small>Cuando termine o falle una transferencia.</small></span></label>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><div><h2>Servicio PeerWay</h2><p>Todo lo necesario está incluido. No hay URL ni servidor que configurar.</p></div></div>
+              <div class="service-status">
+                <span class="dot" id="serviceDot"></span>
+                <strong id="setServerStatus">Comprobando…</strong>
+              </div>
+              <div class="server-info">
+                <div><span>Servicio</span><strong>PeerWay</strong></div>
+                <div><span>Conexión</span><strong>Cifrada</strong></div>
+              </div>
+              <p class="form-note">La infraestructura la gestiona PeerWay de forma automática. Si cambiamos de red o de servidor, tus dominios y tu app siguen funcionando sin que tengas que tocar nada.</p>
+            </div>
+
+              <div class="card about-card">
+                <h3>Acerca de PeerWay</h3>
+                <p>Archivos directos, cifrados y una nube opcional. Tu código y tus archivos te pertenecen.</p>
+                <div class="about-links"><a data-external href="https://www.peerway.me/privacy">Privacidad</a><a data-external href="https://www.peerway.me/terms">Términos</a><a data-external href="https://www.peerway.me/faq">Ayuda</a></div>
+                <div class="about-actions"><button class="btn ghost small" id="aboutFolder"><svg><use href="#i-folder"/></svg> Carpeta de datos</button><span class="version" id="aboutVersion">0.1.23</span></div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="consent-banner hidden" id="consentOverlay" role="region" aria-label="Privacidad">
+    <div class="consent-card">
+      <div class="consent-brand"><span class="brand-mark"><svg><use href="#i-send"/></svg></span><span>PeerWay</span></div>
+      <h2>¿Ayudar a mejorar PeerWay?</h2>
+      <p>Estadísticas de uso con un identificador aleatorio de instalación. Incluye versión, plataforma, plan, si tienes sesión iniciada y contadores; no incluye archivos, nombres, códigos ni direcciones IP. Puedes cambiarlo en Ajustes.</p>
+      <div class="consent-actions">
+        <button class="btn ghost small" id="consentReject">Ahora no</button>
+        <button class="btn primary small" id="consentAccept">Aceptar</button>
+      </div>
+      <a class="consent-link" data-external href="https://www.peerway.me/privacy">Política de privacidad</a>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+  <div class="incoming-stack hidden" id="offerOverlay">
+    <div class="incoming-card" id="offerModal" role="status" aria-live="polite">
+      <div class="offer-icon"><svg><use href="#i-inbox"/></svg></div>
+      <div class="incoming-copy">
+        <span class="eyebrow" id="offerEyebrow">SOLICITUD ENTRANTE</span>
+        <strong id="offerTitle">Un equipo quiere enviarte archivos</strong>
+        <span class="muted" id="offerSubtitle">—</span>
+        <span class="offer-meta"><span id="offerSize">—</span><span class="dot"></span><span id="offerChannel">—</span></span>
+      </div>
+      <div class="offer-actions">
+        <button class="btn ghost small" id="declineOffer">Rechazar</button>
+        <button class="btn primary small" id="acceptOffer"><svg><use href="#i-arrow-down"/></svg> Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="guideOverlay">
+    <div class="guide-modal card" id="guideDialog" role="dialog" aria-modal="true" aria-labelledby="guideTitle" tabindex="-1">
+      <button class="icon-btn guide-close" id="guideClose" type="button" aria-label="Cerrar la guía"><svg><use href="#i-x"/></svg></button>
+      <span class="eyebrow teal">PRIMEROS PASOS</span>
+      <h2 id="guideTitle">Guía rápida</h2>
+      <ol class="guide-steps">
+        <li>
+          <span class="guide-num">1</span>
+          <div><strong>Comparte tu código</strong><span>Compártelo con quien quiera enviarte archivos.</span></div>
+        </li>
+        <li>
+          <span class="guide-num">2</span>
+          <div><strong>Acepta o rechaza envíos</strong><span>Cada solicitud espera tu respuesta antes de recibir nada.</span></div>
+        </li>
+        <li>
+          <span class="guide-num">3</span>
+          <div><strong>La nube es opcional</strong><span>Las transferencias van directas; la nube solo guarda archivos si la activas.</span></div>
+        </li>
+      </ol>
+      <button class="btn primary" id="guideDismiss" type="button">Entendido</button>
+    </div>
+  </div>
+
+  <script src="/i18n.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

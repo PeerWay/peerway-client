@@ -1,0 +1,29 @@
+[package]
+name = "peerway-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "PeerWay desktop app with system tray"
+
+[[bin]]
+name = "peerway-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+peerway_node = { package = "peerway", path = "../../node" }
+peerway_core = { package = "peerway-core", path = "../../core" }
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-single-instance = "2"
+tauri-plugin-deep-link = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-notification = "2"
+tokio = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }

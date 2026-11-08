@@ -1,0 +1,23 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop-local-ui",
+  "description": "Allows the local PeerWay UI to control the window, install updates and refresh the tray language.",
+  "windows": ["main"],
+  "remote": {
+    "urls": ["http://127.0.0.1:*", "http://localhost:*"]
+  },
+  "permissions": [
+    "core:window:allow-start-dragging",
+    "core:window:allow-internal-toggle-maximize",
+    "allow-install-update",
+    "allow-check-updates-now",
+    "allow-pending-update",
+    "allow-notify-native",
+    "notification:default",
+    "allow-refresh-tray",
+    "allow-window-minimize",
+    "allow-window-toggle-maximize",
+    "allow-window-is-maximized",
+    "allow-window-close"
+  ]
+}

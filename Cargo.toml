@@ -1,0 +1,59 @@
+[workspace]
+members = ["crates/core", "crates/node", "crates/desktop/src-tauri"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.23"
+edition = "2021"
+rust-version = "1.85"
+authors = ["PeerWay"]
+license = "Apache-2.0"
+
+[workspace.dependencies]
+anyhow = "1"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+getrandom = "0.3"
+hex = "0.4"
+sha2 = "0.10"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+ed25519-dalek = { version = "3", features = ["rand_core"] }
+x25519-dalek = { version = "3", features = ["static_secrets", "serde"] }
+snow = "0.10"
+quinn = { version = "0.11", default-features = false, features = ["runtime-tokio", "rustls-ring", "log"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rcgen = "0.14"
+reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "stream", "rustls-tls"] }
+tokio-tungstenite = { version = "0.30", default-features = false, features = ["connect", "handshake", "rustls-tls-webpki-roots"] }
+futures-util = "0.3"
+bytes = "1"
+if-addrs = "0.14"
+dirs = "6"
+base64 = "0.22"
+url = "2"
+socket2 = "0.6"
+axum = { version = "0.8", features = ["ws", "multipart"] }
+axum-server = { version = "0.8", default-features = false, features = ["tls-rustls-no-provider"] }
+tower-http = { version = "0.6", features = ["trace"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
+argon2 = "0.5"
+clap = { version = "4", features = ["derive"] }
+open = "5"
+tokio-util = { version = "0.7", features = ["io"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2
