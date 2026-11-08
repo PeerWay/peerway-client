@@ -276,10 +276,7 @@ fn default_share_hours() -> u64 {
     24
 }
 
-async fn share_handler(
-    State(state): State<Arc<Local>>,
-    Json(req): Json<ShareRequest>,
-) -> Response {
+async fn share_handler(State(state): State<Arc<Local>>, Json(req): Json<ShareRequest>) -> Response {
     let paths: Vec<PathBuf> = req
         .paths
         .into_iter()
@@ -303,9 +300,7 @@ async fn share_handler(
 /// Prefer a real LAN address over virtual adapters (VPN, WSL, Hyper-V).
 fn preferred_lan_ip(ips: &[String]) -> String {
     ips.iter()
-        .filter(|ip| {
-            !ip.contains(':') && !ip.starts_with("100.") && !ip.starts_with("169.254.")
-        })
+        .filter(|ip| !ip.contains(':') && !ip.starts_with("100.") && !ip.starts_with("169.254."))
         .max_by_key(|ip| {
             if ip.starts_with("192.168.") {
                 3

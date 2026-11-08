@@ -78,10 +78,9 @@ async fn page(State(node): State<Arc<Node>>, Path(token): Path<String>) -> Respo
          <p>Enlace temporal servido por el equipo que envía. Caduca solo.</p></html>"
     );
     let mut response = Html(html).into_response();
-    response.headers_mut().insert(
-        header::CACHE_CONTROL,
-        HeaderValue::from_static("no-store"),
-    );
+    response
+        .headers_mut()
+        .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     response
 }
 
@@ -109,10 +108,7 @@ async fn download(
         header::CONTENT_LENGTH,
         HeaderValue::from_str(&file.size.to_string()).unwrap_or(HeaderValue::from_static("0")),
     );
-    headers.insert(
-        header::CACHE_CONTROL,
-        HeaderValue::from_static("no-store"),
-    );
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     if let Ok(value) = HeaderValue::from_str(&format!(
         "attachment; filename=\"{}\"",
         file.name.replace(['"', '\\', '\r', '\n'], "_")

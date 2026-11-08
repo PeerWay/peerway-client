@@ -53,11 +53,7 @@ impl RequestSignature<'_> {
     }
 
     pub fn verify(&self, public_key_hex: &str, signature_hex: &str) -> anyhow::Result<()> {
-        verify_ed25519(
-            public_key_hex,
-            self.canonical().as_bytes(),
-            signature_hex,
-        )
+        verify_ed25519(public_key_hex, self.canonical().as_bytes(), signature_hex)
     }
 }
 
