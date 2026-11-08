@@ -1568,8 +1568,11 @@
     }
     try {
       const result = await api('/api/cloud/checkout', { method: 'POST', body: '{}' });
-      if (result.url) window.open(result.url, '_blank', 'noopener');
-      else toast('No hay una URL de pago configurada.', 'warning');
+      if (result.url) {
+        await api('/api/open-url', { method: 'POST', body: JSON.stringify({ url: result.url }) });
+      } else {
+        toast('No hay una URL de pago configurada.', 'warning');
+      }
     } catch (error) {
       toast(error.message, 'warning');
     }
@@ -1794,7 +1797,7 @@
     event.preventDefault();
     const url = link.getAttribute('href');
     api('/api/open-url', { method: 'POST', body: JSON.stringify({ url }) })
-      .catch(() => { window.open(url, '_blank', 'noopener'); });
+      .catch((error) => toast(error.message, 'warning'));
   });
 
   // Discovery broadcasts stop while the window is hidden (battery on laptops).

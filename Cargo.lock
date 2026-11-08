@@ -3462,6 +3462,7 @@ version = "0.1.23"
 dependencies = [
  "anyhow",
  "chrono",
+ "open",
  "peerway",
  "peerway-core",
  "serde",
