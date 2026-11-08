@@ -293,8 +293,10 @@ mod tests {
 
     #[test]
     fn language_normalizes_to_supported_values() {
-        let mut config = NodeConfig::default();
-        config.language = "en-US".into();
+        let mut config = NodeConfig {
+            language: "en-US".into(),
+            ..NodeConfig::default()
+        };
         config.normalize();
         assert_eq!(config.language, "en");
 

@@ -838,6 +838,7 @@ async fn trust_handler(State(state): State<Arc<Local>>, Json(req): Json<TrustReq
     }
 }
 
+#[allow(clippy::result_large_err)]
 fn session_token(node: &Node) -> Result<String, Response> {
     node.session()
         .map(|s| s.token)

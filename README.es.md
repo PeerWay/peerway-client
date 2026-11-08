@@ -10,6 +10,13 @@ Este repositorio contiene **solo el cliente**. El servidor de coordinación, la
 nube y el relay son infraestructura privada de PeerWay y no forman parte de este
 código.
 
+## Aviso
+
+Este proyecto fue escrito íntegramente por un modelo de lenguaje (LLM). No es
+el resultado de autoría humana. Si quieres hacer una versión escrita por
+personas, o inspirarte en este código, puedes hacerlo bajo los términos de la
+licencia.
+
 ## Estructura
 
 - `crates/core`: protocolo, códigos, identidad y criptografía.

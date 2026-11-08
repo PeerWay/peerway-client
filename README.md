@@ -8,6 +8,12 @@ end-to-end encryption, LAN discovery, NAT traversal and relay as a last resort.
 This repository contains **only the client**. The coordination server, cloud and
 relay are PeerWay's private infrastructure and are not part of this code.
 
+## Disclaimer
+
+This project was written entirely by a large language model (LLM). It is not
+the result of human authorship. If you want to build a human-written version,
+or use this code as inspiration, you are welcome to do so under the license.
+
 ## Structure
 
 - `crates/core`: protocol, codes, identity and cryptography.

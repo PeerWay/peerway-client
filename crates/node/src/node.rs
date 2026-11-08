@@ -779,7 +779,7 @@ impl Node {
 
     pub fn transfers(&self) -> Vec<TransferView> {
         let mut list: Vec<_> = self.transfers.read().unwrap().values().cloned().collect();
-        list.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        list.sort_by_key(|transfer| std::cmp::Reverse(transfer.created_at));
         list
     }
 
@@ -828,10 +828,7 @@ impl Node {
 
     pub(crate) fn cancel_token(&self, id: &str) -> CancellationToken {
         let mut cancels = self.cancels.lock().unwrap();
-        cancels
-            .entry(id.to_string())
-            .or_insert_with(CancellationToken::new)
-            .clone()
+        cancels.entry(id.to_string()).or_default().clone()
     }
 
     pub(crate) fn finish_cancel(&self, id: &str) {
@@ -955,7 +952,7 @@ impl Node {
             .filter(|v| !v.is_active())
             .cloned()
             .collect();
-        list.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        list.sort_by_key(|transfer| std::cmp::Reverse(transfer.created_at));
         list.truncate(100);
         if let Ok(raw) = serde_json::to_vec_pretty(&list) {
             let tmp = self.paths.history.with_extension("tmp");

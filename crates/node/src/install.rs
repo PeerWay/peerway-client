@@ -84,6 +84,7 @@ pub fn install(current_exe: &Path) -> Result<PathBuf> {
     }
 }
 
+#[cfg(target_os = "windows")]
 fn escape_ps(value: &str) -> String {
     value.replace('\'', "''")
 }
