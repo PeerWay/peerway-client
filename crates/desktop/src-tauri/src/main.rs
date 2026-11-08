@@ -84,11 +84,13 @@ fn main() {
                     app.manage(Engine {
                         _runtime: Mutex::new(runtime),
                     });
+                    let base = ui_url(port);
                     let url = match &launch_code {
                         Some(found) => {
-                            format!("http://127.0.0.1:{port}/?to={}", code::format(found))
+                            let separator = if base.contains('?') { '&' } else { '?' };
+                            format!("{base}{separator}to={}", code::format(found))
                         }
-                        None => format!("http://127.0.0.1:{port}/"),
+                        None => base,
                     };
                     let parsed = url
                         .parse()
@@ -294,6 +296,21 @@ fn show_main(app: &AppHandle) {
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
+    }
+}
+
+/// Local UI URL with the per-run token. Another OS user cannot read the token
+/// file, so knowing the loopback port is not enough to open the interface.
+fn ui_url(port: u16) -> String {
+    let token = Paths::discover()
+        .ok()
+        .and_then(|paths| std::fs::read_to_string(&paths.local_token).ok())
+        .map(|token| token.trim().to_string())
+        .unwrap_or_default();
+    if token.is_empty() {
+        format!("http://127.0.0.1:{port}/")
+    } else {
+        format!("http://127.0.0.1:{port}/?token={token}")
     }
 }
 

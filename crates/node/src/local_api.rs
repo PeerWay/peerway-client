@@ -1,7 +1,7 @@
 use axum::body::Body;
 use axum::extract::ws::{Message, Utf8Bytes, WebSocketUpgrade};
 use axum::extract::{DefaultBodyLimit, Multipart, Path, Query, Request, State};
-use axum::http::{header, HeaderValue, StatusCode};
+use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{delete, get, post};
@@ -162,14 +162,33 @@ pub async fn serve(node: Arc<Node>, requested_port: u16) -> anyhow::Result<u16> 
 }
 
 async fn require_token(State(state): State<Arc<Local>>, request: Request, next: Next) -> Response {
-    let provided = request
+    let header_token = request
         .headers()
         .get("x-peerway-token")
         .and_then(|v| v.to_str().ok());
+    let provided = header_token.or_else(|| cookie_token(request.headers()));
     if provided != Some(state.token.as_str()) {
         return error(StatusCode::UNAUTHORIZED, "token local inválido");
     }
     next.run(request).await
+}
+
+fn cookie_token(headers: &HeaderMap) -> Option<&str> {
+    headers
+        .get(header::COOKIE)?
+        .to_str()
+        .ok()?
+        .split(';')
+        .filter_map(|part| part.trim().strip_prefix("peerway_token="))
+        .next()
+}
+
+fn set_token_cookie(response: &mut Response, token: &str) {
+    if let Ok(value) = HeaderValue::from_str(&format!(
+        "peerway_token={token}; HttpOnly; SameSite=Strict; Path=/"
+    )) {
+        response.headers_mut().append(header::SET_COOKIE, value);
+    }
 }
 
 fn security_headers() -> [(header::HeaderName, HeaderValue); 3] {
@@ -191,9 +210,51 @@ fn security_headers() -> [(header::HeaderName, HeaderValue); 3] {
     ]
 }
 
-async fn index(State(state): State<Arc<Local>>) -> impl IntoResponse {
+#[derive(serde::Deserialize)]
+struct IndexQuery {
+    #[serde(default)]
+    token: String,
+    #[serde(default)]
+    to: Option<String>,
+}
+
+async fn index(
+    State(state): State<Arc<Local>>,
+    Query(query): Query<IndexQuery>,
+    headers: HeaderMap,
+) -> Response {
+    let from_query = !query.token.is_empty() && query.token == state.token;
+    let from_cookie = cookie_token(&headers) == Some(state.token.as_str());
+    let from_header = headers
+        .get("x-peerway-token")
+        .and_then(|value| value.to_str().ok())
+        == Some(state.token.as_str());
+    if !(from_query || from_cookie || from_header) {
+        return error(StatusCode::UNAUTHORIZED, "token local inválido");
+    }
+    if from_query {
+        // Keep the token out of the visible URL; the cookie carries the session.
+        let target = query
+            .to
+            .as_deref()
+            .map(|to| {
+                to.chars()
+                    .filter(|character| character.is_ascii_alphanumeric() || *character == '-')
+                    .collect::<String>()
+            })
+            .filter(|to| !to.is_empty())
+            .map(|to| format!("/?to={to}"))
+            .unwrap_or_else(|| "/".to_string());
+        let mut response = (StatusCode::SEE_OTHER, [(header::LOCATION, target)]).into_response();
+        set_token_cookie(&mut response, &state.token);
+        return response;
+    }
     let html = INDEX.replace("__PEERWAY_TOKEN__", &state.token);
-    (security_headers(), Html(html))
+    let mut response = (security_headers(), Html(html)).into_response();
+    if !from_cookie {
+        set_token_cookie(&mut response, &state.token);
+    }
+    response
 }
 
 async fn app_js() -> impl IntoResponse {
