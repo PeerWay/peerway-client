@@ -30,6 +30,21 @@ async fn no_store(request: Request, next: Next) -> Response {
     response
 }
 
+/// The UI only answers to loopback names. This blocks DNS rebinding, where a
+/// malicious domain resolves to 127.0.0.1 and reads the local token.
+async fn local_only(request: Request, next: Next) -> Response {
+    let host = request
+        .headers()
+        .get(header::HOST)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default();
+    let name = host.rsplit_once(':').map(|(name, _)| name).unwrap_or(host);
+    if !matches!(name, "127.0.0.1" | "localhost" | "[::1]") {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    next.run(request).await
+}
+
 #[derive(Clone)]
 struct Local {
     node: Arc<Node>,
@@ -113,7 +128,8 @@ pub async fn serve(node: Arc<Node>, requested_port: u16) -> anyhow::Result<u16> 
         .route("/api/cloud/{id}/raw", get(cloud_download_public))
         .merge(protected)
         .with_state(state.clone())
-        .layer(middleware::from_fn(no_store));
+        .layer(middleware::from_fn(no_store))
+        .layer(middleware::from_fn(local_only));
 
     let mut listener = None;
     let mut port = requested_port;
