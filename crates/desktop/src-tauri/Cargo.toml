@@ -9,6 +9,10 @@ description = "PeerWay desktop app with system tray"
 name = "peerway-desktop"
 path = "src/main.rs"
 
+[features]
+# Store builds are packaged as MSIX and updated by Microsoft Store.
+store = []
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

@@ -441,6 +441,7 @@ async fn state_handler(State(state): State<Arc<Local>>) -> Json<serde_json::Valu
         "auto_accept_trusted": config.auto_accept_trusted,
         "auto_update": config.auto_update,
         "autostart_enabled": config.autostart_enabled,
+        "store": std::env::var("PEERWAY_STORE").is_ok(),
         "language": config.language,
         "telemetry_enabled": config.telemetry_enabled,
         "telemetry_choice_made": config.telemetry_choice_made,

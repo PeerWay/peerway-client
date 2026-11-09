@@ -1061,3 +1061,5 @@ body[data-os="macos"] .window-btn:hover { filter: brightness(0.92); }
     transition-duration: 0.01ms !important;
   }
 }
+
+.store-build #updateBanner { display: none !important; }

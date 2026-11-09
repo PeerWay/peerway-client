@@ -50,6 +50,9 @@ fn manual_update_check() -> &'static Mutex<Option<(Instant, Option<UpdateInfo>)>
 }
 
 fn main() {
+    #[cfg(feature = "store")]
+    std::env::set_var("PEERWAY_STORE", "1");
+    #[cfg(not(feature = "store"))]
     apply_saved_autostart();
     let args: Vec<String> = std::env::args().collect();
     let minimized = args.iter().any(|arg| arg == "--minimized");
@@ -109,6 +112,7 @@ fn main() {
                     let _ = window.show();
                 }
             }
+            #[cfg(not(feature = "store"))]
             spawn_updater(app.handle().clone());
             Ok(())
         })
@@ -122,6 +126,7 @@ fn main() {
 /// The autostart entry is written by the node when the setting is saved. On
 /// startup we reconcile it with the persisted preference, which also handles
 /// the first run after installing a new version.
+#[cfg(not(feature = "store"))]
 fn apply_saved_autostart() {
     let Ok(paths) = Paths::discover() else {
         return;
@@ -243,6 +248,9 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         true,
         None::<&str>,
     )?;
+    #[cfg(feature = "store")]
+    let menu = Menu::with_items(app, &[&open, &quit])?;
+    #[cfg(not(feature = "store"))]
     let menu = Menu::with_items(app, &[&open, &check, &update, &quit])?;
     app.manage(UpdateMenu {
         open,
@@ -360,6 +368,9 @@ fn ui_language() -> String {
 
 #[tauri::command]
 async fn install_update(app: AppHandle) -> Result<(), String> {
+    if cfg!(feature = "store") {
+        return Err("las actualizaciones se instalan desde Microsoft Store".into());
+    }
     if UPDATE_RUNNING.load(Ordering::SeqCst) {
         return Err("ya hay una comprobación de actualizaciones en curso".into());
     }
@@ -371,6 +382,9 @@ async fn install_update(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 async fn check_updates_now(app: AppHandle) -> Result<Option<UpdateInfo>, String> {
+    if cfg!(feature = "store") {
+        return Ok(None);
+    }
     // Manual checks are intentionally quiet for 30 seconds. Repeating the
     // action returns the same result instead of hammering the update server,
     // which keeps the button responsive without showing a countdown.
@@ -391,6 +405,9 @@ async fn check_updates_now(app: AppHandle) -> Result<Option<UpdateInfo>, String>
 
 #[tauri::command]
 fn pending_update(state: tauri::State<'_, UpdateMenu>) -> Option<UpdateInfo> {
+    if cfg!(feature = "store") {
+        return None;
+    }
     state.pending.lock().unwrap().clone()
 }
 
@@ -562,7 +579,11 @@ fn log_error(message: &str) {
     }
 }
 
+#[cfg(not(feature = "store"))]
 fn spawn_updater(app: AppHandle) {
+    if cfg!(feature = "store") {
+        return;
+    }
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(Duration::from_secs(45)).await;
         let mut failures = 0u32;
@@ -601,6 +622,9 @@ async fn check_updates(
     install: bool,
     announce: bool,
 ) -> Result<Option<UpdateInfo>> {
+    if cfg!(feature = "store") {
+        return Ok(None);
+    }
     if UPDATE_RUNNING.swap(true, Ordering::SeqCst) {
         return Ok(None);
     }
