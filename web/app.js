@@ -967,9 +967,22 @@
 
   function renderTrusted(s) {
     const codes = s.trusted_codes || [];
-    $('#trustedList').innerHTML = codes.map((code) => `
-      <span class="trusted-chip">${trustedCodesVisible ? escapeHtml(code) : '••••-••••'}<button data-untrust="${escapeHtml(code)}" title="Quitar" aria-label="Quitar">${icon('x')}</button></span>
-    `).join('');
+    const removeLabel = isEnglish() ? 'Remove' : 'Quitar';
+    $('#trustedList').innerHTML = codes.map((code) => {
+      const initial = escapeHtml((code.trim()[0] || '?').toUpperCase());
+      const shown = trustedCodesVisible ? escapeHtml(code) : '••••-••••';
+      const avatar = trustedCodesVisible ? initial : icon('user');
+      return `
+      <div class="trusted-contact">
+        <span class="trusted-avatar" aria-hidden="true">${avatar}</span>
+        <div class="trusted-who">
+          <strong>${shown}</strong>
+          <span>${isEnglish() ? 'Trusted device' : 'Equipo de confianza'}</span>
+        </div>
+        <button class="icon-btn" data-copy-trusted="${escapeHtml(code)}" title="${isEnglish() ? 'Copy code' : 'Copiar código'}" aria-label="${isEnglish() ? 'Copy code' : 'Copiar código'}">${icon('copy')}</button>
+        <button class="icon-btn" data-untrust="${escapeHtml(code)}" title="${removeLabel}" aria-label="${removeLabel}">${icon('x')}</button>
+      </div>`;
+    }).join('');
     $('#trustedEmpty').classList.toggle('hidden', codes.length > 0);
     const toggle = $('#toggleTrustedCodes');
     if (toggle) {
@@ -1887,6 +1900,13 @@
           await loadState();
         } catch (error) {
           toast(error.message, 'error');
+        }
+        return;
+      }
+      const copyTrusted = event.target.closest('[data-copy-trusted]');
+      if (copyTrusted) {
+        if (await copyText(copyTrusted.dataset.copyTrusted)) {
+          toast(isEnglish() ? 'Code copied.' : 'Código copiado.', 'success');
         }
         return;
       }

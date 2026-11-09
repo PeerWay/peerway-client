@@ -706,11 +706,15 @@ body.tauri .sidebar {
 .server-info strong { display: block; font-size: 10.5px; margin-top: 3px; font-family: var(--mono); word-break: break-all; }
 .trusted-input-row { display: flex; gap: 8px; }
 .trusted-input-row .input { flex: 1; font-family: var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
-.trusted-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
-.trusted-chip { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 10.5px; padding: 5px 8px; border-radius: 8px; background: rgba(91, 140, 255, 0.07); border: 1px solid rgba(91, 140, 255, 0.15); color: var(--teal); }
-.trusted-chip button { background: none; border: none; color: var(--muted-2); display: grid; place-items: center; padding: 0; }
-.trusted-chip button:hover { color: var(--red); }
-.trusted-chip svg { width: 12px; height: 12px; }
+.trusted-list { display: flex; flex-direction: column; margin-top: 14px; }
+.trusted-contact { display: flex; align-items: center; gap: 11px; padding: 9px 4px; }
+.trusted-contact + .trusted-contact { border-top: 1px solid rgba(148, 163, 184, 0.07); }
+.trusted-avatar { width: 34px; height: 34px; border-radius: 11px; flex: none; display: grid; place-items: center; font-family: var(--mono); font-size: 13px; color: var(--teal); background: rgba(91, 140, 255, 0.09); border: 1px solid rgba(91, 140, 255, 0.16); }
+.trusted-avatar svg { width: 15px; height: 15px; }
+.trusted-who { min-width: 0; flex: 1; }
+.trusted-who strong { display: block; font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.06em; }
+.trusted-who span { font-size: 10px; color: var(--muted-2); }
+.trusted-contact [data-copy-trusted]:hover { background: rgba(91, 140, 255, 0.1); color: var(--teal); }
 .about-card h3 { margin-bottom: 6px; }
 .about-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 .about-actions .version { margin-left: auto; }
@@ -1001,7 +1005,7 @@ body[data-os="macos"] .window-btn:hover { filter: brightness(0.92); }
 .cloud-retention, .cloud-plan .muted, .seg-control button, .feature span,
 .upgrade-points span, .mini-price span, .quota-meta, .cloud-main span,
 .speed-result span, .toggle-row strong, .toggle-row small, .server-info strong,
-.trusted-chip, .consent-points, .consent-link, .offer-file, .offer-file span,
+.trusted-contact, .consent-points, .consent-link, .offer-file, .offer-file span,
 .offer-meta, .lan-action, .target-hint, .consent-banner p, .nav-item.secondary,
 .guide-steps div span, .verify-notice, .session-main span, .advanced-settings > summary,
 .lan-main span, .lan-main strong, .secure-badge, .transfer-peer span, .transfer-meta,
