@@ -41,6 +41,15 @@ pub struct NodeConfig {
     /// Temporary code, kept so it survives restarts. Empty means "generate".
     #[serde(default)]
     pub code: String,
+    /// Home widget order chosen in customization mode.
+    #[serde(default)]
+    pub home_layout: Vec<String>,
+    /// Last version whose changelog was dismissed, empty on first run.
+    #[serde(default)]
+    pub last_seen_version: String,
+    /// Set when the user asks to stop showing changelogs.
+    #[serde(default)]
+    pub changelog_disabled: bool,
 }
 
 fn default_auto_update() -> bool {
@@ -120,6 +129,9 @@ impl Default for NodeConfig {
             force_relay: false,
             lan_port: default_lan_port(),
             code: String::new(),
+            home_layout: Vec::new(),
+            last_seen_version: String::new(),
+            changelog_disabled: false,
         }
     }
 }

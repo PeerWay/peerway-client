@@ -101,6 +101,9 @@ pub async fn serve(node: Arc<Node>, requested_port: u16) -> anyhow::Result<u16> 
         )
         .route("/api/history/clear", post(clear_history))
         .route("/api/settings", post(settings_handler))
+        .route("/api/home-layout", post(home_layout_handler))
+        .route("/api/changelog", get(changelog_handler))
+        .route("/api/changelog/seen", post(changelog_seen_handler))
         .route("/api/trust", post(trust_handler))
         .route("/api/speedtest", post(speedtest_handler))
         .route("/api/consent", post(consent_handler))
@@ -196,7 +199,7 @@ fn security_headers() -> [(header::HeaderName, HeaderValue); 3] {
         (
             header::CONTENT_SECURITY_POLICY,
             HeaderValue::from_static(
-                "default-src 'self'; script-src 'self' https://www.paypal.com https://www.paypalobjects.com; style-src 'self' 'unsafe-inline' https://www.paypal.com; img-src 'self' data: https://www.paypal.com https://www.paypalobjects.com; connect-src 'self' ws://127.0.0.1:* ws://localhost:* https://www.paypal.com https://www.paypalobjects.com https://api-m.paypal.com https://api-m.sandbox.paypal.com; frame-src https://www.paypal.com https://www.sandbox.paypal.com; frame-ancestors 'none'",
+                "default-src 'self'; script-src 'self' https://www.paypal.com https://www.paypalobjects.com; style-src 'self' 'unsafe-inline' https://www.paypal.com; img-src 'self' data: https://www.paypal.com https://www.paypalobjects.com https://www.peerway.me; media-src 'self' https://www.peerway.me; connect-src 'self' ws://127.0.0.1:* ws://localhost:* https://www.paypal.com https://www.paypalobjects.com https://api-m.paypal.com https://api-m.sandbox.paypal.com; frame-src https://www.paypal.com https://www.sandbox.paypal.com; frame-ancestors 'none'",
             ),
         ),
         (
@@ -431,6 +434,9 @@ async fn state_handler(State(state): State<Arc<Local>>) -> Json<serde_json::Valu
         "quota_bytes": session.as_ref().map(|s| s.quota_bytes).unwrap_or(0),
         "used_bytes": session.as_ref().map(|s| s.used_bytes).unwrap_or(0),
         "trusted_codes": config.trusted_codes.iter().map(|c| peerway_core::code::format(c)).collect::<Vec<_>>(),
+        "home_layout": config.home_layout,
+        "last_seen_version": config.last_seen_version,
+        "changelog_disabled": config.changelog_disabled,
         "auto_accept_trusted": config.auto_accept_trusted,
         "auto_update": config.auto_update,
         "autostart_enabled": config.autostart_enabled,
@@ -524,6 +530,8 @@ struct SettingsRequest {
     notify_updates: Option<bool>,
     #[serde(default)]
     notify_transfers: Option<bool>,
+    #[serde(default)]
+    changelog_disabled: Option<bool>,
 }
 
 async fn stage_files(State(state): State<Arc<Local>>, mut multipart: Multipart) -> Response {
@@ -846,6 +854,87 @@ async fn revoke_others_handler(State(state): State<Arc<Local>>) -> Response {
     }
 }
 
+/// Widgets that can be reordered on the home page, in default order. Unknown
+/// or duplicate ids are dropped; the UI fills any missing ones.
+const HOME_WIDGETS: [&str; 4] = ["send", "nearby", "recent", "received"];
+
+#[derive(Deserialize)]
+struct HomeLayoutRequest {
+    layout: Vec<String>,
+}
+
+async fn home_layout_handler(
+    State(state): State<Arc<Local>>,
+    Json(req): Json<HomeLayoutRequest>,
+) -> Response {
+    let mut layout: Vec<String> = Vec::new();
+    for id in req.layout {
+        if HOME_WIDGETS.contains(&id.as_str()) && !layout.contains(&id) {
+            layout.push(id);
+        }
+    }
+    let mut config = state.node.config();
+    config.home_layout = layout;
+    match state.node.update_config(config) {
+        Ok(()) => Json(serde_json::json!({ "ok": true })).into_response(),
+        Err(e) => error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+    }
+}
+
+const CHANGELOG_URL: &str = "https://www.peerway.me/updates/changelog.json";
+
+/// Release notes are fetched by the node so the local UI needs neither CORS
+/// nor a wider connect-src for JSON. Media files still load from the site.
+async fn changelog_handler() -> Response {
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(6))
+        .build()
+    {
+        Ok(client) => client,
+        Err(e) => return error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+    };
+    match client.get(CHANGELOG_URL).send().await {
+        Ok(response) if response.status().is_success() => match response.text().await {
+            Ok(body) if body.len() <= 2_000_000 => {
+                ([(header::CONTENT_TYPE, "application/json")], body).into_response()
+            }
+            Ok(_) => error(StatusCode::BAD_GATEWAY, "changelog demasiado grande"),
+            Err(e) => error(StatusCode::BAD_GATEWAY, e.to_string()),
+        },
+        Ok(response) => error(
+            StatusCode::BAD_GATEWAY,
+            format!("changelog HTTP {}", response.status()),
+        ),
+        Err(e) => error(StatusCode::BAD_GATEWAY, e.to_string()),
+    }
+}
+
+#[derive(Deserialize)]
+struct ChangelogSeenRequest {
+    version: String,
+    #[serde(default)]
+    disable: bool,
+}
+
+async fn changelog_seen_handler(
+    State(state): State<Arc<Local>>,
+    Json(req): Json<ChangelogSeenRequest>,
+) -> Response {
+    let version: String = req.version.trim().chars().take(32).collect();
+    if version.is_empty() {
+        return error(StatusCode::BAD_REQUEST, "versión vacía");
+    }
+    let mut config = state.node.config();
+    config.last_seen_version = version;
+    if req.disable {
+        config.changelog_disabled = true;
+    }
+    match state.node.update_config(config) {
+        Ok(()) => Json(serde_json::json!({ "ok": true })).into_response(),
+        Err(e) => error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+    }
+}
+
 async fn settings_handler(
     State(state): State<Arc<Local>>,
     Json(req): Json<SettingsRequest>,
@@ -886,6 +975,9 @@ async fn settings_handler(
     }
     if let Some(enabled) = req.notify_transfers {
         config.notify_transfers = enabled;
+    }
+    if let Some(disabled) = req.changelog_disabled {
+        config.changelog_disabled = disabled;
     }
     let autostart_enabled = config.autostart_enabled;
     match state.node.update_config(config) {

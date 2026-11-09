@@ -405,6 +405,14 @@
     'Copiar': 'Copy',
     '3–32 caracteres, sin espacios ni acentos: letras, números, punto, guion y guion bajo.': '3–32 characters, no spaces or accents: letters, numbers, dot, dash, underscore.',
     '••••-••••': '••••-••••',
+    'Personalizar': 'Customize',
+    'Listo': 'Done',
+    'Restablecer': 'Reset',
+    'Mostrar novedades al actualizar': 'Show release notes after updates',
+    'Un resumen de los cambios de cada versión, con imágenes o videos.': 'A summary of each version, with images or videos.',
+    'No mostrar cambios': "Don't show changes",
+    'Puedes volver a activarlo en Ajustes.': 'You can turn it back on in Settings.',
+    'NOVEDADES': "WHAT'S NEW",
   };
 
   const RULES = [
@@ -475,7 +483,7 @@
   }
 
   function skippable(element) {
-    return !element || !!element.closest('script, style, option, textarea');
+    return !element || !!element.closest('script, style, option, textarea, [data-no-i18n]');
   }
 
   function translateTextNode(node) {

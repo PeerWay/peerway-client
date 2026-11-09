@@ -23,6 +23,12 @@
   const RECENT_KEY = 'peerway.recentRecipients';
   let recentRecipients = [];
   let trustedCodesVisible = false;
+  const HOME_WIDGETS = ['nearby', 'recent', 'send', 'received'];
+  let homeOrder = [...HOME_WIDGETS];
+  let homeCustomizing = false;
+  let homeDragging = null;
+  let changelogChecked = false;
+  let changelogShown = false;
   let toastId = 0;
   let notifications = [];
   let notificationSeq = 0;
@@ -538,6 +544,8 @@
     currentView = view;
     $$('.nav-item').forEach((button) => button.classList.toggle('active', button.dataset.view === view));
     $$('.view').forEach((section) => section.classList.toggle('hidden', section.id !== `view-${view}`));
+    if (view !== 'send' && homeCustomizing) setHomeCustomizing(false);
+    $('#customizeBtn')?.classList.toggle('hidden', view !== 'send');
     const meta = VIEW_META[view] || {
       es: ['PeerWay', ''],
       en: ['PeerWay', ''],
@@ -614,6 +622,11 @@
     renderConsent(s);
     renderCloudAccount(s);
     renderTrusted(s);
+    renderHomeLayout();
+    if (!changelogChecked) {
+      changelogChecked = true;
+      maybeShowChangelog(s);
+    }
     trackTransferNotifications(s);
     if (activeOffer) {
       const stillOffered = (s.transfers || []).some(
@@ -794,6 +807,7 @@
     $('#setAutoTrust').checked = !!state.auto_accept_trusted;
     $('#setLan').checked = !!state.lan_discovery;
     $('#setAutoUpdate').checked = state.auto_update !== false;
+    $('#setChangelog').checked = !state.changelog_disabled;
     $('#setAutostart').checked = state.autostart_enabled === true;
     $('#setTelemetry').checked = state.telemetry_enabled === true;
     $('#setNotifications').checked = state.notifications_enabled !== false;
@@ -991,6 +1005,193 @@
         : (isEnglish() ? 'Show codes' : 'Mostrar códigos');
       toggle.querySelector('use')?.setAttribute('href', trustedCodesVisible ? '#i-eye-off' : '#i-eye');
     }
+  }
+
+  // ---- Home layout (customization mode) ----
+
+  function homeWidgets() {
+    const grid = $('#homeGrid');
+    return grid ? Array.from(grid.querySelectorAll('[data-widget]')) : [];
+  }
+
+  function savedHomeOrder() {
+    const saved = Array.isArray(state?.home_layout) ? state.home_layout : [];
+    return [
+      ...saved.filter((id) => HOME_WIDGETS.includes(id)),
+      ...HOME_WIDGETS.filter((id) => !saved.includes(id)),
+    ];
+  }
+
+  function applyHomeOrder(order) {
+    homeOrder = order;
+    homeWidgets().forEach((widget) => {
+      const index = order.indexOf(widget.dataset.widget);
+      if (index >= 0) widget.style.order = String(index);
+    });
+  }
+
+  function renderHomeLayout() {
+    if (!homeCustomizing) applyHomeOrder(savedHomeOrder());
+  }
+
+  async function saveHomeLayout() {
+    try {
+      await api('/api/home-layout', {
+        method: 'POST',
+        body: JSON.stringify({ layout: homeOrder }),
+      });
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  }
+
+  function setHomeCustomizing(on) {
+    homeCustomizing = on;
+    $('#homeGrid')?.classList.toggle('customizing', on);
+    homeWidgets().forEach((widget) => {
+      widget.draggable = on && widget.dataset.widget !== 'active';
+    });
+    $('#resetLayoutBtn')?.classList.toggle('hidden', !on || currentView !== 'send');
+    $('#customizeLabel').textContent = on
+      ? (isEnglish() ? 'Done' : 'Listo')
+      : (isEnglish() ? 'Customize' : 'Personalizar');
+    if (on) applyHomeOrder(homeOrder);
+    else applyHomeOrder(savedHomeOrder());
+  }
+
+  function setupHomeCustomize() {
+    const grid = $('#homeGrid');
+    if (!grid) return;
+    grid.addEventListener('dragstart', (event) => {
+      const widget = event.target.closest('[data-widget]');
+      if (!homeCustomizing || !widget || widget.dataset.widget === 'active') return;
+      homeDragging = widget.dataset.widget;
+      widget.classList.add('dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', homeDragging);
+    });
+    grid.addEventListener('dragend', () => {
+      homeWidgets().forEach((widget) => widget.classList.remove('dragging'));
+      if (!homeDragging) return;
+      homeDragging = null;
+      saveHomeLayout();
+    });
+    grid.addEventListener('dragover', (event) => {
+      if (!homeDragging) return;
+      const target = event.target.closest('[data-widget]');
+      if (!target) return;
+      const targetId = target.dataset.widget;
+      if (targetId === homeDragging || targetId === 'active') return;
+      event.preventDefault();
+      const rect = target.getBoundingClientRect();
+      const after = event.clientX > rect.left + rect.width / 2;
+      const order = homeOrder.filter((id) => id !== homeDragging);
+      const index = order.indexOf(targetId);
+      if (index < 0) return;
+      order.splice(after ? index + 1 : index, 0, homeDragging);
+      applyHomeOrder(order);
+    });
+    grid.addEventListener('drop', (event) => event.preventDefault());
+  }
+
+  // ---- Release notes ----
+
+  function changelogMediaUrl(url) {
+    return typeof url === 'string' && /^https:\/\/www\.peerway\.me\/updates\//.test(url);
+  }
+
+  function changelogText(value) {
+    if (typeof value === 'string') return value;
+    if (value && typeof value === 'object') {
+      return value[isEnglish() ? 'en' : 'es'] || value.es || value.en || '';
+    }
+    return '';
+  }
+
+  function showChangelog(data) {
+    const body = $('#changelogBody');
+    if (!body) return;
+    $('#changelogTitle').textContent = changelogText(data.title) || (isEnglish() ? "What's new" : 'Qué cambió');
+    body.textContent = '';
+    for (const section of Array.isArray(data.sections) ? data.sections : []) {
+      const wrap = document.createElement('section');
+      wrap.className = 'changelog-section';
+      const sectionTitle = changelogText(section.title);
+      if (sectionTitle) {
+        const title = document.createElement('h3');
+        title.textContent = sectionTitle;
+        wrap.appendChild(title);
+      }
+      const sectionBody = changelogText(section.body);
+      if (sectionBody) {
+        const text = document.createElement('p');
+        text.textContent = sectionBody;
+        wrap.appendChild(text);
+      }
+      const media = Array.isArray(section.media) ? section.media : [];
+      const box = document.createElement('div');
+      box.className = 'changelog-media';
+      for (const item of media) {
+        if (!item || !changelogMediaUrl(item.src)) continue;
+        if (item.type === 'video') {
+          const video = document.createElement('video');
+          video.src = item.src;
+          video.controls = true;
+          video.preload = 'metadata';
+          if (changelogMediaUrl(item.poster)) video.poster = item.poster;
+          box.appendChild(video);
+        } else {
+          const image = document.createElement('img');
+          image.src = item.src;
+          image.alt = item.alt || '';
+          image.loading = 'lazy';
+          box.appendChild(image);
+        }
+      }
+      if (box.children.length) wrap.appendChild(box);
+      body.appendChild(wrap);
+    }
+    if (!body.children.length) return;
+    $('#changelogOverlay').classList.remove('hidden');
+    $('#changelogDialog').focus();
+  }
+
+  async function markChangelogSeen(version, disable) {
+    try {
+      await api('/api/changelog/seen', {
+        method: 'POST',
+        body: JSON.stringify({ version, disable }),
+      });
+      if (state) {
+        state.last_seen_version = version;
+        if (disable) state.changelog_disabled = true;
+      }
+    } catch {
+      // The dialog is already closed; try again on the next start.
+    }
+  }
+
+  async function maybeShowChangelog(s) {
+    if (!s?.version || s.changelog_disabled) return;
+    if (s.last_seen_version === s.version) return;
+    if (!s.last_seen_version) {
+      // Fresh install: remember this version without showing old notes.
+      await markChangelogSeen(s.version, false);
+      return;
+    }
+    changelogShown = true;
+    try {
+      const data = await api('/api/changelog');
+      if (data?.version === s.version) showChangelog(data);
+    } catch {
+      // Offline or notes not published yet: retry on the next start.
+    }
+  }
+
+  async function dismissChangelog() {
+    const disable = !!$('#changelogDisable')?.checked;
+    $('#changelogOverlay')?.classList.add('hidden');
+    if (state?.version) await markChangelogSeen(state.version, disable);
   }
 
   // State pushes arrive while the user types; never overwrite an input that is
@@ -1681,6 +1882,7 @@
       auto_accept_trusted: $('#setAutoTrust').checked,
       lan_discovery: $('#setLan').checked,
       auto_update: $('#setAutoUpdate').checked,
+      changelog_disabled: !$('#setChangelog').checked,
       autostart_enabled: $('#setAutostart').checked,
       telemetry_enabled: $('#setTelemetry').checked,
       telemetry_choice_made: true,
@@ -1823,6 +2025,14 @@
 
   function bindEvents() {
     $$('.nav-item').forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
+  $('#customizeBtn')?.addEventListener('click', () => setHomeCustomizing(!homeCustomizing));
+  $('#resetLayoutBtn')?.addEventListener('click', () => {
+    applyHomeOrder([...HOME_WIDGETS]);
+    saveHomeLayout();
+  });
+  $('#changelogClose')?.addEventListener('click', dismissChangelog);
+  $('#changelogDismiss')?.addEventListener('click', dismissChangelog);
+  setupHomeCustomize();
     document.addEventListener('click', async (event) => {
       const goto = event.target.closest('[data-goto]');
       if (goto) {
@@ -2153,7 +2363,7 @@
     });
 
     const markDirty = () => { settingsDirty = true; };
-    ['setDevice', 'setDownload', 'setAutoTrust', 'setLan', 'setAutoUpdate', 'setAutostart', 'setTelemetry', 'setNotifications', 'setNotifyUpdates', 'setNotifyTransfers']
+    ['setDevice', 'setDownload', 'setAutoTrust', 'setLan', 'setAutoUpdate', 'setChangelog', 'setAutostart', 'setTelemetry', 'setNotifications', 'setNotifyUpdates', 'setNotifyTransfers']
       .forEach((id) => document.getElementById(id).addEventListener('input', markDirty));
     $('#setNotifications').addEventListener('change', syncNotificationControls);
     $('#saveSettings').addEventListener('click', saveSettings);
