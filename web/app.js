@@ -23,10 +23,20 @@
   const RECENT_KEY = 'peerway.recentRecipients';
   let recentRecipients = [];
   let trustedCodesVisible = false;
-  const HOME_WIDGETS = ['nearby', 'recent', 'send', 'received'];
-  let homeOrder = [...HOME_WIDGETS];
+  const HOME_COLS = 12;
+  const HOME_GAP = 12;
+  const HOME_ROW = 24;
+  const HOME_MIN_W = 3;
+  const HOME_MIN_H = 5;
+  const HOME_DEFAULTS = {
+    nearby: { x: 0, y: 0, w: 7, h: 8 },
+    recent: { x: 7, y: 0, w: 5, h: 8 },
+    send: { x: 0, y: 8, w: 7, h: 25 },
+    received: { x: 7, y: 8, w: 5, h: 18 },
+  };
+  let homeLayout = [];
   let homeCustomizing = false;
-  let homeDragging = null;
+  let homeDrag = null;
   let changelogChecked = false;
   let changelogShown = false;
   let toastId = 0;
@@ -546,6 +556,10 @@
     $$('.view').forEach((section) => section.classList.toggle('hidden', section.id !== `view-${view}`));
     if (view !== 'send' && homeCustomizing) setHomeCustomizing(false);
     $('#customizeBtn')?.classList.toggle('hidden', view !== 'send');
+    if (view === 'send') {
+      if (!homeCustomizing) homeLayout = readHomeLayout();
+      applyHomeGrid();
+    }
     const meta = VIEW_META[view] || {
       es: ['PeerWay', ''],
       en: ['PeerWay', ''],
@@ -1014,88 +1028,218 @@
     return grid ? Array.from(grid.querySelectorAll('[data-widget]')) : [];
   }
 
-  function savedHomeOrder() {
-    const saved = Array.isArray(state?.home_layout) ? state.home_layout : [];
-    return [
-      ...saved.filter((id) => HOME_WIDGETS.includes(id)),
-      ...HOME_WIDGETS.filter((id) => !saved.includes(id)),
-    ];
+  function defaultHomeLayout() {
+    return Object.entries(HOME_DEFAULTS).map(([id, slot]) => ({ id, ...slot }));
   }
 
-  function applyHomeOrder(order) {
-    homeOrder = order;
+  function normalizeHomeSlot(slot) {
+    const w = Math.min(HOME_COLS, Math.max(HOME_MIN_W, Number(slot.w) || 5));
+    const h = Math.min(60, Math.max(HOME_MIN_H, Number(slot.h) || 8));
+    const x = Math.min(HOME_COLS - w, Math.max(0, Number(slot.x) || 0));
+    const y = Math.min(200, Math.max(0, Number(slot.y) || 0));
+    return { id: slot.id, x, y, w, h };
+  }
+
+  function readHomeLayout() {
+    const raw = Array.isArray(state?.home_layout) ? state.home_layout : [];
+    const found = new Map();
+    for (const item of raw) {
+      if (item && typeof item === 'object' && HOME_DEFAULTS[item.id]) {
+        found.set(item.id, normalizeHomeSlot(item));
+      }
+    }
+    return Object.keys(HOME_DEFAULTS).map(
+      (id) => found.get(id) || { id, ...HOME_DEFAULTS[id] }
+    );
+  }
+
+  function homeMetrics() {
+    const grid = $('#homeGrid');
+    const width = grid ? grid.clientWidth : 0;
+    const col = (width - HOME_GAP * (HOME_COLS - 1)) / HOME_COLS;
+    return { col, stepX: col + HOME_GAP, stepY: HOME_ROW };
+  }
+
+  function ensureResizeHandles() {
     homeWidgets().forEach((widget) => {
-      const index = order.indexOf(widget.dataset.widget);
-      if (index >= 0) widget.style.order = String(index);
+      if (widget.querySelector('.widget-resize')) return;
+      const handle = document.createElement('button');
+      handle.type = 'button';
+      handle.className = 'widget-resize';
+      handle.setAttribute('aria-label', isEnglish() ? 'Resize' : 'Redimensionar');
+      widget.appendChild(handle);
     });
   }
 
-  function renderHomeLayout() {
-    if (!homeCustomizing) applyHomeOrder(savedHomeOrder());
+  function applyHomeGrid() {
+    const grid = $('#homeGrid');
+    if (!grid || !grid.clientWidth) return;
+    if (window.matchMedia('(max-width: 900px)').matches) {
+      grid.style.height = '';
+      homeWidgets().forEach((widget) => {
+        widget.style.left = '';
+        widget.style.top = '';
+        widget.style.width = '';
+        widget.style.height = '';
+      });
+      return;
+    }
+    const { col } = homeMetrics();
+    let rows = 0;
+    for (const slot of homeLayout) {
+      const widget = grid.querySelector(`[data-widget="${slot.id}"]`);
+      if (!widget) continue;
+      widget.style.left = `${slot.x * (col + HOME_GAP)}px`;
+      widget.style.top = `${slot.y * HOME_ROW}px`;
+      widget.style.width = `${slot.w * col + (slot.w - 1) * HOME_GAP}px`;
+      widget.style.height = `${slot.h * HOME_ROW - HOME_GAP}px`;
+      rows = Math.max(rows, slot.y + slot.h);
+    }
+    grid.style.height = `${rows * HOME_ROW}px`;
+  }
+
+  function showHomePlaceholder(slot) {
+    let placeholder = $('#homePlaceholder');
+    if (!placeholder) {
+      placeholder = document.createElement('div');
+      placeholder.id = 'homePlaceholder';
+      placeholder.className = 'widget-placeholder';
+      $('#homeGrid')?.appendChild(placeholder);
+    }
+    const { col } = homeMetrics();
+    placeholder.style.left = `${slot.x * (col + HOME_GAP)}px`;
+    placeholder.style.top = `${slot.y * HOME_ROW}px`;
+    placeholder.style.width = `${slot.w * col + (slot.w - 1) * HOME_GAP}px`;
+    placeholder.style.height = `${slot.h * HOME_ROW - HOME_GAP}px`;
+  }
+
+  function hideHomePlaceholder() {
+    $('#homePlaceholder')?.remove();
+  }
+
+  function homeOverlaps(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  function resolveHomeCollisions(movedId) {
+    const moved = homeLayout.find((slot) => slot.id === movedId);
+    if (!moved) return;
+    const placed = [moved];
+    const others = homeLayout
+      .filter((slot) => slot.id !== movedId)
+      .sort((a, b) => a.y - b.y || a.x - b.x);
+    for (const slot of others) {
+      let guard = 0;
+      while (placed.some((other) => homeOverlaps(slot, other)) && guard < 100) {
+        const hit = placed.find((other) => homeOverlaps(slot, other));
+        slot.y = hit.y + hit.h;
+        guard += 1;
+      }
+      placed.push(slot);
+    }
   }
 
   async function saveHomeLayout() {
     try {
       await api('/api/home-layout', {
         method: 'POST',
-        body: JSON.stringify({ layout: homeOrder }),
+        body: JSON.stringify({ layout: homeLayout }),
       });
     } catch (error) {
       toast(error.message, 'error');
     }
   }
 
+  function renderHomeLayout() {
+    if (homeCustomizing) return;
+    homeLayout = readHomeLayout();
+    ensureResizeHandles();
+    applyHomeGrid();
+  }
+
   function setHomeCustomizing(on) {
     const wasOn = homeCustomizing;
     homeCustomizing = on;
     $('#homeGrid')?.classList.toggle('customizing', on);
-    homeWidgets().forEach((widget) => {
-      widget.draggable = on && widget.dataset.widget !== 'active';
-    });
     $('#resetLayoutBtn')?.classList.toggle('hidden', !on || currentView !== 'send');
     $('#customizeLabel').textContent = on
       ? (isEnglish() ? 'Done' : 'Listo')
       : (isEnglish() ? 'Customize' : 'Personalizar');
-    if (on) applyHomeOrder(homeOrder);
-    else {
-      applyHomeOrder(homeOrder);
+    if (on) {
+      homeLayout = readHomeLayout();
+      ensureResizeHandles();
+      applyHomeGrid();
+    } else {
+      hideHomePlaceholder();
+      homeWidgets().forEach((widget) => widget.classList.remove('dragging'));
+      applyHomeGrid();
       if (wasOn) saveHomeLayout();
     }
+  }
+
+  function finishHomeDrag() {
+    if (!homeDrag) return;
+    const { id, target, widget } = homeDrag;
+    homeDrag = null;
+    widget.classList.remove('dragging');
+    widget.style.transform = '';
+    hideHomePlaceholder();
+    const slot = homeLayout.find((item) => item.id === id);
+    if (slot) Object.assign(slot, target);
+    resolveHomeCollisions(id);
+    applyHomeGrid();
+    saveHomeLayout();
   }
 
   function setupHomeCustomize() {
     const grid = $('#homeGrid');
     if (!grid) return;
-    grid.addEventListener('dragstart', (event) => {
+    grid.addEventListener('pointerdown', (event) => {
+      if (!homeCustomizing || event.button !== 0) return;
       const widget = event.target.closest('[data-widget]');
-      if (!homeCustomizing || !widget || widget.dataset.widget === 'active') return;
-      homeDragging = widget.dataset.widget;
-      widget.classList.add('dragging');
-      event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData('text/plain', homeDragging);
-    });
-    grid.addEventListener('dragend', () => {
-      homeWidgets().forEach((widget) => widget.classList.remove('dragging'));
-      if (!homeDragging) return;
-      homeDragging = null;
-      saveHomeLayout();
-    });
-    grid.addEventListener('dragover', (event) => {
-      if (!homeDragging) return;
-      const target = event.target.closest('[data-widget]');
-      if (!target) return;
-      const targetId = target.dataset.widget;
-      if (targetId === homeDragging || targetId === 'active') return;
+      if (!widget) return;
+      const slot = homeLayout.find((item) => item.id === widget.dataset.widget);
+      if (!slot) return;
       event.preventDefault();
-      const rect = target.getBoundingClientRect();
-      const after = event.clientX > rect.left + rect.width / 2;
-      const order = homeOrder.filter((id) => id !== homeDragging);
-      const index = order.indexOf(targetId);
-      if (index < 0) return;
-      order.splice(after ? index + 1 : index, 0, homeDragging);
-      applyHomeOrder(order);
+      homeDrag = {
+        id: slot.id,
+        resize: !!event.target.closest('.widget-resize'),
+        widget,
+        startX: event.clientX,
+        startY: event.clientY,
+        slot: { ...slot },
+        target: { ...slot },
+      };
+      widget.classList.add('dragging');
+      grid.setPointerCapture(event.pointerId);
     });
-    grid.addEventListener('drop', (event) => event.preventDefault());
+    grid.addEventListener('pointermove', (event) => {
+      if (!homeDrag) return;
+      const { col, stepX, stepY } = homeMetrics();
+      const dx = Math.round((event.clientX - homeDrag.startX) / stepX);
+      const dy = Math.round((event.clientY - homeDrag.startY) / stepY);
+      if (homeDrag.resize) {
+        const w = Math.min(
+          HOME_COLS - homeDrag.slot.x,
+          Math.max(HOME_MIN_W, homeDrag.slot.w + dx)
+        );
+        const h = Math.max(HOME_MIN_H, homeDrag.slot.h + dy);
+        homeDrag.target = { ...homeDrag.slot, w, h };
+        homeDrag.widget.style.width = `${w * col + (w - 1) * HOME_GAP}px`;
+        homeDrag.widget.style.height = `${h * HOME_ROW - HOME_GAP}px`;
+      } else {
+        const x = Math.min(
+          HOME_COLS - homeDrag.slot.w,
+          Math.max(0, homeDrag.slot.x + dx)
+        );
+        const y = Math.max(0, homeDrag.slot.y + dy);
+        homeDrag.target = { ...homeDrag.slot, x, y };
+        homeDrag.widget.style.transform = `translate(${event.clientX - homeDrag.startX}px, ${event.clientY - homeDrag.startY}px)`;
+      }
+      showHomePlaceholder(homeDrag.target);
+    });
+    grid.addEventListener('pointerup', finishHomeDrag);
+    grid.addEventListener('pointercancel', finishHomeDrag);
   }
 
   // ---- Release notes ----
@@ -2031,7 +2175,8 @@
     $$('.nav-item').forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
   $('#customizeBtn')?.addEventListener('click', () => setHomeCustomizing(!homeCustomizing));
   $('#resetLayoutBtn')?.addEventListener('click', () => {
-    applyHomeOrder([...HOME_WIDGETS]);
+    homeLayout = defaultHomeLayout();
+    applyHomeGrid();
     saveHomeLayout();
   });
   $('#changelogClose')?.addEventListener('click', dismissChangelog);
@@ -2389,6 +2534,7 @@
       reportVisibility();
     });
     window.addEventListener('beforeunload', () => { if (ws) ws.close(); });
+    window.addEventListener('resize', applyHomeGrid);
     window.addEventListener('peerway-toast', (event) => {
       if (event.detail?.message) toast(event.detail.message, event.detail.level || 'info');
     });

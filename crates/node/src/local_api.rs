@@ -14,6 +14,7 @@ use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 
+use crate::config::{HomeGridSlot, HomeSlot};
 use crate::node::Node;
 
 const INDEX: &str = include_str!("../../../web/index.html");
@@ -860,21 +861,31 @@ const HOME_WIDGETS: [&str; 4] = ["send", "nearby", "recent", "received"];
 
 #[derive(Deserialize)]
 struct HomeLayoutRequest {
-    layout: Vec<String>,
+    layout: Vec<HomeSlot>,
 }
 
 async fn home_layout_handler(
     State(state): State<Arc<Local>>,
     Json(req): Json<HomeLayoutRequest>,
 ) -> Response {
-    let mut layout: Vec<String> = Vec::new();
-    for id in req.layout {
-        if HOME_WIDGETS.contains(&id.as_str()) && !layout.contains(&id) {
-            layout.push(id);
+    let mut layout: Vec<HomeGridSlot> = Vec::new();
+    for slot in req.layout {
+        let HomeSlot::Grid(mut slot) = slot else {
+            continue;
+        };
+        if !HOME_WIDGETS.contains(&slot.id.as_str())
+            || layout.iter().any(|existing| existing.id == slot.id)
+        {
+            continue;
         }
+        slot.w = slot.w.clamp(3, 12);
+        slot.x = slot.x.min(12 - slot.w);
+        slot.h = slot.h.clamp(4, 60);
+        slot.y = slot.y.min(200);
+        layout.push(slot);
     }
     let mut config = state.node.config();
-    config.home_layout = layout;
+    config.home_layout = layout.into_iter().map(HomeSlot::Grid).collect();
     match state.node.update_config(config) {
         Ok(()) => Json(serde_json::json!({ "ok": true })).into_response(),
         Err(e) => error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),

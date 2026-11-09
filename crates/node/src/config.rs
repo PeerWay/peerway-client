@@ -41,15 +41,35 @@ pub struct NodeConfig {
     /// Temporary code, kept so it survives restarts. Empty means "generate".
     #[serde(default)]
     pub code: String,
-    /// Home widget order chosen in customization mode.
+    /// Home widget positions on the 12-column grid. The legacy string form
+    /// from 0.1.24 is accepted so old configs still load.
     #[serde(default)]
-    pub home_layout: Vec<String>,
+    pub home_layout: Vec<HomeSlot>,
     /// Last version whose changelog was dismissed, empty on first run.
     #[serde(default)]
     pub last_seen_version: String,
     /// Set when the user asks to stop showing changelogs.
     #[serde(default)]
     pub changelog_disabled: bool,
+}
+
+/// One home widget position on the 12-column grid.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct HomeGridSlot {
+    pub id: String,
+    pub x: u16,
+    pub y: u16,
+    pub w: u16,
+    pub h: u16,
+}
+
+/// Accepts both the old order-only layout (plain strings) and the grid layout,
+/// so a config written by 0.1.24 still loads.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum HomeSlot {
+    Grid(HomeGridSlot),
+    Legacy(String),
 }
 
 fn default_auto_update() -> bool {
