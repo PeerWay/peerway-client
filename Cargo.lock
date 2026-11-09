@@ -3388,7 +3388,7 @@ dependencies = [
 
 [[package]]
 name = "peerway"
-version = "0.1.23"
+version = "0.1.24"
 dependencies = [
  "anyhow",
  "axum",
@@ -3427,7 +3427,7 @@ dependencies = [
 
 [[package]]
 name = "peerway-core"
-version = "0.1.23"
+version = "0.1.24"
 dependencies = [
  "anyhow",
  "bytes",
@@ -3458,7 +3458,7 @@ dependencies = [
 
 [[package]]
 name = "peerway-desktop"
-version = "0.1.23"
+version = "0.1.24"
 dependencies = [
  "anyhow",
  "chrono",
