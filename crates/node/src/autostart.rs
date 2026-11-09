@@ -7,6 +7,12 @@ use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
 pub fn apply(enabled: bool) -> Result<()> {
+    // MSIX/Store builds cannot use the registry Run key: Windows requires a
+    // manifest-declared StartupTask and user consent.
+    #[cfg(windows)]
+    if std::env::var("PEERWAY_STORE").is_ok() {
+        return apply_startup_task(enabled);
+    }
     let exe = installed_executable();
     if enabled && exe.is_none() {
         return Ok(());
@@ -43,6 +49,58 @@ fn installed_executable() -> Option<PathBuf> {
         Some(exe)
     } else {
         None
+    }
+}
+
+#[cfg(windows)]
+fn apply_startup_task(enabled: bool) -> Result<()> {
+    use std::future::IntoFuture;
+    use windows::core::HSTRING;
+    use windows::ApplicationModel::{StartupTask, StartupTaskState};
+
+    let task = block_on(
+        StartupTask::GetAsync(&HSTRING::from("PeerWayStartup"))
+            .context("leyendo la tarea de inicio automático")?
+            .into_future(),
+    )?;
+    if enabled {
+        let state = block_on(
+            task.RequestEnableAsync()
+                .context("activando el inicio automático")?
+                .into_future(),
+        )?;
+        if state != StartupTaskState::Enabled {
+            anyhow::bail!("Windows no permitió activar el inicio automático");
+        }
+    } else {
+        task.Disable()
+            .context("desactivando el inicio automático")?;
+    }
+    Ok(())
+}
+
+/// Minimal blocking executor for the WinRT startup task calls, which are
+/// synchronous from the settings handler and from startup.
+#[cfg(windows)]
+fn block_on<F: std::future::Future>(future: F) -> F::Output {
+    use std::sync::Arc;
+    use std::task::{Context, Poll, Wake, Waker};
+
+    struct ThreadWaker(std::thread::Thread);
+    impl Wake for ThreadWaker {
+        fn wake(self: Arc<Self>) {
+            self.0.unpark();
+        }
+    }
+
+    let waker = Waker::from(Arc::new(ThreadWaker(std::thread::current())));
+    let mut context = Context::from_waker(&waker);
+    let mut future = Box::pin(future);
+    loop {
+        match future.as_mut().poll(&mut context) {
+            Poll::Ready(value) => return value,
+            Poll::Pending => std::thread::park(),
+        }
     }
 }
 

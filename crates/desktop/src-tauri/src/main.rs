@@ -52,7 +52,6 @@ fn manual_update_check() -> &'static Mutex<Option<(Instant, Option<UpdateInfo>)>
 fn main() {
     #[cfg(feature = "store")]
     std::env::set_var("PEERWAY_STORE", "1");
-    #[cfg(not(feature = "store"))]
     apply_saved_autostart();
     let args: Vec<String> = std::env::args().collect();
     let minimized = args.iter().any(|arg| arg == "--minimized");
@@ -126,7 +125,6 @@ fn main() {
 /// The autostart entry is written by the node when the setting is saved. On
 /// startup we reconcile it with the persisted preference, which also handles
 /// the first run after installing a new version.
-#[cfg(not(feature = "store"))]
 fn apply_saved_autostart() {
     let Ok(paths) = Paths::discover() else {
         return;

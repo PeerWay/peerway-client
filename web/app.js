@@ -607,7 +607,6 @@
     const storeBuild = !!s.store;
     document.body.classList.toggle('store-build', storeBuild);
     $('#setAutoUpdate')?.closest('label')?.classList.toggle('hidden', storeBuild);
-    $('#setAutostart')?.closest('label')?.classList.toggle('hidden', storeBuild);
     $('#storeNote')?.classList.toggle('hidden', !storeBuild);
     currentCode = s.code || '';
     renderCode();

@@ -48,3 +48,4 @@ url.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"
+windows = { version = "0.62", features = ["ApplicationModel", "Foundation"] }
