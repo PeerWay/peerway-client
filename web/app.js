@@ -1046,6 +1046,7 @@
   }
 
   function setHomeCustomizing(on) {
+    const wasOn = homeCustomizing;
     homeCustomizing = on;
     $('#homeGrid')?.classList.toggle('customizing', on);
     homeWidgets().forEach((widget) => {
@@ -1056,7 +1057,10 @@
       ? (isEnglish() ? 'Done' : 'Listo')
       : (isEnglish() ? 'Customize' : 'Personalizar');
     if (on) applyHomeOrder(homeOrder);
-    else applyHomeOrder(savedHomeOrder());
+    else {
+      applyHomeOrder(homeOrder);
+      if (wasOn) saveHomeLayout();
+    }
   }
 
   function setupHomeCustomize() {
