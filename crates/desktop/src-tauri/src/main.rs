@@ -31,6 +31,8 @@ struct Engine {
 struct UpdateInfo {
     version: String,
     security: bool,
+    #[serde(default)]
+    store: bool,
 }
 
 struct UpdateMenu {
@@ -111,7 +113,6 @@ fn main() {
                     let _ = window.show();
                 }
             }
-            #[cfg(not(feature = "store"))]
             spawn_updater(app.handle().clone());
             Ok(())
         })
@@ -367,6 +368,12 @@ fn ui_language() -> String {
 #[tauri::command]
 async fn install_update(app: AppHandle) -> Result<(), String> {
     if cfg!(feature = "store") {
+        #[cfg(all(windows, feature = "store"))]
+        {
+            open_store().map_err(|error| format!("{error:#}"))?;
+            return Ok(());
+        }
+        #[cfg(not(all(windows, feature = "store")))]
         return Err("las actualizaciones se instalan desde Microsoft Store".into());
     }
     if UPDATE_RUNNING.load(Ordering::SeqCst) {
@@ -381,6 +388,11 @@ async fn install_update(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 async fn check_updates_now(app: AppHandle) -> Result<Option<UpdateInfo>, String> {
     if cfg!(feature = "store") {
+        #[cfg(all(windows, feature = "store"))]
+        return check_store_update(&app, false, true)
+            .await
+            .map_err(|error| format!("{error:#}"));
+        #[cfg(not(all(windows, feature = "store")))]
         return Ok(None);
     }
     // Manual checks are intentionally quiet for 30 seconds. Repeating the
@@ -615,12 +627,117 @@ fn spawn_updater(app: AppHandle) {
     });
 }
 
+#[cfg(all(windows, feature = "store"))]
+fn spawn_updater(app: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(45)).await;
+        loop {
+            let _ = check_store_update(&app, false, false).await;
+            tokio::time::sleep(Duration::from_secs(6 * 60 * 60)).await;
+        }
+    });
+}
+
+#[cfg(all(not(windows), feature = "store"))]
+fn spawn_updater(_app: AppHandle) {}
+
+#[cfg(all(windows, feature = "store"))]
+async fn check_store_update(
+    app: &AppHandle,
+    install: bool,
+    announce: bool,
+) -> Result<Option<UpdateInfo>> {
+    use std::future::IntoFuture;
+    use windows::ApplicationModel::{Package, PackageUpdateAvailability};
+
+    let available = async {
+        let package = Package::Current().context("leyendo el paquete MSIX")?;
+        let result = package
+            .CheckUpdateAvailabilityAsync()
+            .context("consultando Microsoft Store")?
+            .into_future()
+            .await
+            .context("consultando Microsoft Store")?;
+        let availability = result
+            .Availability()
+            .context("consultando Microsoft Store")?;
+        Ok::<_, anyhow::Error>(
+            availability == PackageUpdateAvailability::Available
+                || availability == PackageUpdateAvailability::Required,
+        )
+    }
+    .await;
+
+    let available = match available {
+        Ok(value) => value,
+        Err(error) => {
+            log_error(&format!("store update: {error:#}"));
+            if announce {
+                let message = if ui_language() == "en" {
+                    "Could not check Microsoft Store. Try again later."
+                } else {
+                    "No se pudo consultar Microsoft Store. Inténtalo más tarde."
+                };
+                announce_update_error(app, message);
+            }
+            return Err(error);
+        }
+    };
+
+    if !available {
+        if let Some(state) = app.try_state::<UpdateMenu>() {
+            *state.pending.lock().unwrap() = None;
+            let _ = state.update.set_enabled(false);
+        }
+        if announce {
+            let message = if ui_language() == "en" {
+                "PeerWay is up to date."
+            } else {
+                "PeerWay ya está actualizado."
+            };
+            notify_user(app, message, "info");
+        }
+        return Ok(None);
+    }
+
+    let info = UpdateInfo {
+        version: "Store".into(),
+        security: false,
+        store: true,
+    };
+    if let Some(state) = app.try_state::<UpdateMenu>() {
+        *state.pending.lock().unwrap() = Some(info.clone());
+        let label = if ui_language() == "en" {
+            "Update in Microsoft Store"
+        } else {
+            "Actualizar en Microsoft Store"
+        };
+        let _ = state.update.set_text(label);
+        let _ = state.update.set_enabled(true);
+    }
+    if install {
+        open_store().context("abriendo Microsoft Store")?;
+    } else {
+        announce_update(app, &info);
+    }
+    Ok(Some(info))
+}
+
+#[cfg(all(windows, feature = "store"))]
+fn open_store() -> Result<()> {
+    // shortcut: opens the Store updates page; switch to the product page once the Store ID exists.
+    open::that("ms-windows-store://downloadsandupdates").context("abriendo Microsoft Store")
+}
+
 async fn check_updates(
     app: &AppHandle,
     install: bool,
     announce: bool,
 ) -> Result<Option<UpdateInfo>> {
     if cfg!(feature = "store") {
+        #[cfg(all(windows, feature = "store"))]
+        return check_store_update(app, install, announce).await;
+        #[cfg(not(all(windows, feature = "store")))]
         return Ok(None);
     }
     if UPDATE_RUNNING.swap(true, Ordering::SeqCst) {
@@ -652,6 +769,7 @@ async fn check_updates(
                 .get("security")
                 .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false),
+            store: false,
         };
         if let Some(state) = app.try_state::<UpdateMenu>() {
             *state.pending.lock().unwrap() = Some(info.clone());
@@ -763,8 +881,9 @@ fn announce_update(app: &AppHandle, info: &UpdateInfo) {
     if let Some(window) = app.get_webview_window("main") {
         let version = serde_json::to_string(&info.version).unwrap_or_else(|_| "\"\"".into());
         let security = info.security;
+        let store = info.store;
         let _ = window.eval(&format!(
-            "window.dispatchEvent(new CustomEvent('peerway-update', {{ detail: {{ version: {version}, security: {security} }} }}));"
+            "window.dispatchEvent(new CustomEvent('peerway-update', {{ detail: {{ version: {version}, security: {security}, store: {store} }} }}));"
         ));
     }
 }

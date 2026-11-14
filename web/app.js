@@ -304,35 +304,50 @@
     }
   }
 
-  function showUpdate(version, security = false, notify = true) {
+  function showUpdate(version, security = false, notify = true, store = false) {
     const banner = $('#updateBanner');
-    banner.classList.toggle('security', !!security);
-    $('#updateKind').classList.toggle('hidden', !security);
-    $('#updateTitle').textContent = security
-      ? (isEnglish() ? 'Security update available.' : 'Actualización de seguridad disponible.')
-      : (isEnglish() ? 'Update available.' : 'Actualización disponible.');
-    $('#updateText').textContent = security
+    const storeUpdate = !!store;
+    banner.classList.toggle('security', !!security && !storeUpdate);
+    $('#updateKind').classList.toggle('hidden', !security || storeUpdate);
+    $('#updateTitle').textContent = storeUpdate
+      ? (isEnglish() ? 'New version in Microsoft Store.' : 'Nueva versión en Microsoft Store.')
+      : security
+        ? (isEnglish() ? 'Security update available.' : 'Actualización de seguridad disponible.')
+        : (isEnglish() ? 'Update available.' : 'Actualización disponible.');
+    $('#updateText').textContent = storeUpdate
       ? (isEnglish()
-        ? `Version ${version} fixes a security issue. Installing it is recommended.`
-        : `La versión ${version} corrige un problema de seguridad. Se recomienda instalarla.`)
-      : (isEnglish()
-        ? `Version ${version} is available.`
-        : `Actualización ${version} disponible.`);
+        ? 'Update from the Microsoft Store to get the latest version.'
+        : 'Actualiza desde Microsoft Store para obtener la última versión.')
+      : security
+        ? (isEnglish()
+          ? `Version ${version} fixes a security issue. Installing it is recommended.`
+          : `La versión ${version} corrige un problema de seguridad. Se recomienda instalarla.`)
+        : (isEnglish()
+          ? `Version ${version} is available.`
+          : `Actualización ${version} disponible.`);
     $('#updateInstallBtn').classList.remove('hidden');
     $('#updateInstallBtn').disabled = false;
-    $('#updateInstallBtn').textContent = isEnglish() ? 'Install now' : 'Instalar ahora';
+    $('#updateInstallBtn').textContent = storeUpdate
+      ? (isEnglish() ? 'Open Store' : 'Abrir Store')
+      : (isEnglish() ? 'Install now' : 'Instalar ahora');
     $('#updateManualBtn').classList.add('hidden');
     $('#updateLaterBtn').textContent = isEnglish() ? 'Later' : 'Más tarde';
     banner.classList.remove('hidden');
     if (notify) {
       pushNotification(
-        security
-          ? (isEnglish() ? `Security update ${version} available` : `Actualización de seguridad ${version} disponible`)
-          : (isEnglish() ? `Version ${version} available` : `Actualización ${version} disponible`),
-        isEnglish()
-          ? 'Open PeerWay to install it when your transfers are idle.'
-          : 'Abre PeerWay para instalarla cuando no tengas transferencias activas.',
-        security ? 'warning' : 'info',
+        storeUpdate
+          ? (isEnglish() ? 'New version in Microsoft Store' : 'Nueva versión en Microsoft Store')
+          : security
+            ? (isEnglish() ? `Security update ${version} available` : `Actualización de seguridad ${version} disponible`)
+            : (isEnglish() ? `Version ${version} available` : `Actualización ${version} disponible`),
+        storeUpdate
+          ? (isEnglish()
+            ? 'Open PeerWay to update from the Store.'
+            : 'Abre PeerWay para actualizar desde Microsoft Store.')
+          : isEnglish()
+            ? 'Open PeerWay to install it when your transfers are idle.'
+            : 'Abre PeerWay para instalarla cuando no tengas transferencias activas.',
+        security && !storeUpdate ? 'warning' : 'info',
         'updates'
       );
     }
@@ -412,15 +427,28 @@
       return;
     }
     const button = $('#updateInstallBtn');
+    const store = !!state?.store;
     button.disabled = true;
-    button.textContent = 'Instalando actualización…';
+    button.textContent = store
+      ? (isEnglish() ? 'Opening Store…' : 'Abriendo Store…')
+      : 'Instalando actualización…';
     try {
       await invoke('install_update');
       button.disabled = false;
-      button.textContent = 'Instalar ahora';
+      button.textContent = store
+        ? (isEnglish() ? 'Open Store' : 'Abrir Store')
+        : (isEnglish() ? 'Install now' : 'Instalar ahora');
     } catch (error) {
       button.disabled = false;
-      button.textContent = isEnglish() ? 'Install now' : 'Instalar ahora';
+      button.textContent = store
+        ? (isEnglish() ? 'Open Store' : 'Abrir Store')
+        : (isEnglish() ? 'Install now' : 'Instalar ahora');
+      if (store) {
+        showUpdateError(isEnglish()
+          ? 'Could not open Microsoft Store. Open it from the Start menu and check for updates.'
+          : 'No se pudo abrir Microsoft Store. Ábrela desde el menú Inicio y busca actualizaciones.');
+        return;
+      }
       const raw = String(error?.message || error || '');
       const signature = /signature|firma/i.test(raw);
       showUpdateError(signature
@@ -444,11 +472,14 @@
     // for 30 seconds it repeats the previous answer instead of calling home.
     if (now - lastUpdateCheck.at < UPDATE_COOLDOWN_MS) {
       if (lastUpdateCheck.result) {
-        showUpdate(lastUpdateCheck.result.version, lastUpdateCheck.result.security, false);
+        const cached = lastUpdateCheck.result;
+        showUpdate(cached.version, cached.security, false, cached.store);
         if (status) {
-          status.textContent = isEnglish()
-            ? `Update ${lastUpdateCheck.result.version} available.`
-            : `Actualización ${lastUpdateCheck.result.version} disponible.`;
+          status.textContent = cached.store
+            ? (isEnglish() ? 'New version in Microsoft Store.' : 'Hay una versión nueva en Microsoft Store.')
+            : isEnglish()
+              ? `Update ${cached.version} available.`
+              : `Actualización ${cached.version} disponible.`;
         }
       } else if (lastUpdateCheck.error) {
         if (status) {
@@ -479,15 +510,17 @@
       const result = await invoke('check_updates_now');
       lastUpdateCheck = { at: Date.now(), result: result || null, error: null };
       if (result) {
-        showUpdate(result.version, result.security);
+        showUpdate(result.version, result.security, true, result.store);
         if (status) {
-          status.textContent = result.security
-            ? (isEnglish()
-              ? `Security update ${result.version} available.`
-              : `Actualización de seguridad ${result.version} disponible.`)
-            : (isEnglish()
-              ? `Update ${result.version} available.`
-              : `Actualización ${result.version} disponible.`);
+          status.textContent = result.store
+            ? (isEnglish() ? 'New version in Microsoft Store.' : 'Hay una versión nueva en Microsoft Store.')
+            : result.security
+              ? (isEnglish()
+                ? `Security update ${result.version} available.`
+                : `Actualización de seguridad ${result.version} disponible.`)
+              : (isEnglish()
+                ? `Update ${result.version} available.`
+                : `Actualización ${result.version} disponible.`);
         }
       } else {
         hideUpdate();
@@ -2544,10 +2577,14 @@
     });
     window.addEventListener('peerway-update', (event) => {
       if (event.detail?.version) {
-        showUpdate(event.detail.version, !!event.detail.security);
+        showUpdate(event.detail.version, !!event.detail.security, true, !!event.detail.store);
         lastUpdateCheck = {
           at: Date.now(),
-          result: { version: event.detail.version, security: !!event.detail.security },
+          result: {
+            version: event.detail.version,
+            security: !!event.detail.security,
+            store: !!event.detail.store,
+          },
           error: null,
         };
       }
@@ -2627,11 +2664,11 @@
         .then((info) => {
           if (!info) return;
           if (typeof info === 'string') showUpdate(info);
-          else if (info.version) showUpdate(info.version, !!info.security);
+          else if (info.version) showUpdate(info.version, !!info.security, true, !!info.store);
           lastUpdateCheck = {
             at: Date.now(),
             result: info && typeof info === 'object'
-              ? { version: info.version, security: !!info.security }
+              ? { version: info.version, security: !!info.security, store: !!info.store }
               : (info ? { version: info, security: false } : null),
             error: null,
           };
