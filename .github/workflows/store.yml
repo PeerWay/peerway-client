@@ -1,0 +1,46 @@
+name: Publish to Microsoft Store
+
+# Manual only: bump the version first (scripts/set-version.ps1 0.1.25), commit,
+# then run this workflow. The MSIX version must be higher than the last one
+# submitted to the Store.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build signed MSIX
+        shell: pwsh
+        run: ./scripts/package-msix.ps1
+
+      - uses: microsoft/microsoft-store-apppublisher@v1.4
+
+      - name: Configure Store credentials
+        shell: pwsh
+        env:
+          TENANT_ID: ${{ secrets.PARTNER_CENTER_TENANT_ID }}
+          SELLER_ID: ${{ secrets.PARTNER_CENTER_SELLER_ID }}
+          CLIENT_ID: ${{ secrets.PARTNER_CENTER_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.PARTNER_CENTER_CLIENT_SECRET }}
+        run: |
+          msstore reconfigure --tenantId $env:TENANT_ID --sellerId $env:SELLER_ID --clientId $env:CLIENT_ID --clientSecret $env:CLIENT_SECRET
+
+      - name: Upload and publish
+        shell: pwsh
+        env:
+          PRODUCT_ID: ${{ secrets.STORE_PRODUCT_ID }}
+        run: |
+          $version = (Get-Content "crates/desktop/src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json).version
+          $package = "dist/PeerWay_${version}.0_x64.msix"
+          if (-not (Test-Path $package)) {
+            throw "No existe $package. Revisa la versión de tauri.conf.json."
+          }
+          msstore publish $package -id $env:PRODUCT_ID
