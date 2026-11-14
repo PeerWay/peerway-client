@@ -1,16 +1,16 @@
 # Builds a signed MSIX for Microsoft Store submission.
 #
-# Usage:
-#   scripts/package-msix.ps1 -IdentityName "12345Javier.PeerWay" `
-#     -Publisher "CN=8F3C..." -PublisherDisplayName "PeerWay"
+# Identity values live in packaging/identity.json and can be overridden by
+# parameters. They are not secrets: every MSIX ships them and the Store shows
+# the publisher name publicly.
 #
-# The package is signed with a self-signed certificate whose subject matches the
-# Publisher identity; the Store replaces it with a Microsoft signature on
-# certification. That certificate subject must match exactly.
+# Usage:
+#   scripts/package-msix.ps1
+#   scripts/package-msix.ps1 -Version 0.1.25.0
 param(
-  [Parameter(Mandatory = $true)][string]$IdentityName,
-  [Parameter(Mandatory = $true)][string]$Publisher,
-  [string]$PublisherDisplayName = "PeerWay",
+  [string]$IdentityName = "",
+  [string]$Publisher = "",
+  [string]$PublisherDisplayName = "",
   [string]$Version = "",
   [ValidateSet("x64", "arm64")]
   [string]$Architecture = "x64",
@@ -20,6 +20,16 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path "$PSScriptRoot\..").Path
+$identityFile = Join-Path $root "packaging\identity.json"
+if (Test-Path $identityFile) {
+  $identity = Get-Content $identityFile -Raw -Encoding UTF8 | ConvertFrom-Json
+  if (-not $IdentityName) { $IdentityName = $identity.identityName }
+  if (-not $Publisher) { $Publisher = $identity.publisher }
+  if (-not $PublisherDisplayName) { $PublisherDisplayName = $identity.publisherDisplayName }
+}
+if (-not $IdentityName) { throw "Falta IdentityName: usa packaging/identity.json o el parámetro -IdentityName." }
+if (-not $Publisher) { throw "Falta Publisher: usa packaging/identity.json o el parámetro -Publisher." }
+if (-not $PublisherDisplayName) { $PublisherDisplayName = "PeerWay" }
 $config = Get-Content (Join-Path $root "crates\desktop\src-tauri\tauri.conf.json") -Raw -Encoding UTF8 | ConvertFrom-Json
 if (-not $Version) { $Version = "$($config.version).0" }
 if ($Version -notmatch '^\d+\.\d+\.\d+\.\d+$') {
