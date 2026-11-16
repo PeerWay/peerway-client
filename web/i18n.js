@@ -409,6 +409,8 @@
     'Personalizar': 'Customize',
     'Listo': 'Done',
     'Restablecer': 'Reset',
+    'Restablecer conexión': 'Reset connection',
+    'La conexión ya estaba configurada.': 'The connection was already configured.',
     'Mostrar novedades al actualizar': 'Show release notes after updates',
     'Un resumen de los cambios de cada versión, con imágenes o videos.': 'A summary of each version, with images or videos.',
     'No mostrar cambios': "Don't show changes",

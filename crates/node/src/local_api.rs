@@ -14,7 +14,7 @@ use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 
-use crate::config::{HomeGridSlot, HomeSlot};
+use crate::config::{default_server_url, HomeGridSlot, HomeSlot};
 use crate::node::Node;
 
 const INDEX: &str = include_str!("../../../web/index.html");
@@ -102,6 +102,7 @@ pub async fn serve(node: Arc<Node>, requested_port: u16) -> anyhow::Result<u16> 
         )
         .route("/api/history/clear", post(clear_history))
         .route("/api/settings", post(settings_handler))
+        .route("/api/server/reset", post(server_reset_handler))
         .route("/api/home-layout", post(home_layout_handler))
         .route("/api/changelog", get(changelog_handler))
         .route("/api/changelog/seen", post(changelog_seen_handler))
@@ -1002,6 +1003,20 @@ async fn settings_handler(
             }
             Json(serde_json::json!({ "ok": true })).into_response()
         }
+        Err(e) => error(StatusCode::BAD_REQUEST, format!("{e:#}")),
+    }
+}
+
+/// Repairs the coordination server URL. 0.1.24 shipped localhost as the
+/// compiled default, so a reset is the way out without editing config.json.
+async fn server_reset_handler(State(state): State<Arc<Local>>) -> Response {
+    let mut config = state.node.config();
+    let restart =
+        config.server_url.trim_end_matches('/') != default_server_url() || config.insecure_tls;
+    config.server_url = default_server_url();
+    config.insecure_tls = false;
+    match state.node.update_config(config) {
+        Ok(()) => Json(serde_json::json!({ "ok": true, "restart": restart })).into_response(),
         Err(e) => error(StatusCode::BAD_REQUEST, format!("{e:#}")),
     }
 }

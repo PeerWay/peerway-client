@@ -12,6 +12,7 @@ param(
   [string]$Publisher = "",
   [string]$PublisherDisplayName = "",
   [string]$Version = "",
+  [string]$ServerUrl = "https://api.peerway.io",
   [ValidateSet("x64", "arm64")]
   [string]$Architecture = "x64",
   [string]$Description = "Transferencia P2P de archivos con códigos",
@@ -20,6 +21,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path "$PSScriptRoot\..").Path
+# Without this the binary falls back to https://localhost:8443, which the
+# 0.1.24 Store package shipped and which no user can reach.
+$env:PEERWAY_DEFAULT_SERVER_URL = $ServerUrl
+$env:PEERWAY_DEFAULT_INSECURE_TLS = "0"
 $identityFile = Join-Path $root "packaging\identity.json"
 if (Test-Path $identityFile) {
   $identity = Get-Content $identityFile -Raw -Encoding UTF8 | ConvertFrom-Json

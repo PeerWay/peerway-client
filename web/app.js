@@ -2086,6 +2086,17 @@
     }
   }
 
+  async function resetServer() {
+    try {
+      const result = await api('/api/server/reset', { method: 'POST' });
+      // When the URL changed, the node already toasts that a restart is needed.
+      if (!result?.restart) toast('La conexión ya estaba configurada.', 'info');
+      await loadState();
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  }
+
   async function addTrusted() {
     const code = normalizeCode($('#trustCode').value);
     if (code.length !== 8) {
@@ -2553,6 +2564,7 @@
       .forEach((id) => document.getElementById(id).addEventListener('input', markDirty));
     $('#setNotifications').addEventListener('change', syncNotificationControls);
     $('#saveSettings').addEventListener('click', saveSettings);
+  $('#resetServer').addEventListener('click', resetServer);
     $('#speedPlans')?.addEventListener('click', () => setView('cloud'));
     $('#addTrust').addEventListener('click', addTrusted);
     $('#toggleTrustedCodes').addEventListener('click', () => {

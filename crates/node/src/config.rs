@@ -102,18 +102,29 @@ fn default_quic_port() -> u16 {
     8444
 }
 
-fn default_server_url() -> String {
+pub fn default_server_url() -> String {
     option_env!("PEERWAY_DEFAULT_SERVER_URL")
         .unwrap_or(DEFAULT_SERVER_URL)
         .to_string()
+}
+
+fn is_loopback(url: &str) -> bool {
+    url.contains("localhost") || url.contains("127.0.0.1")
+}
+
+/// Replaces a loopback server saved by a build that had no production default.
+fn heal_server_url(config: &mut NodeConfig, default_url: &str) {
+    if is_loopback(&config.server_url) && !is_loopback(default_url) {
+        config.server_url = default_url.to_string();
+        config.insecure_tls = false;
+    }
 }
 
 fn default_insecure_tls() -> bool {
     if let Some(value) = option_env!("PEERWAY_DEFAULT_INSECURE_TLS") {
         return matches!(value, "1" | "true" | "yes");
     }
-    let url = default_server_url();
-    url.contains("localhost") || url.contains("127.0.0.1")
+    is_loopback(&default_server_url())
 }
 
 impl Default for NodeConfig {
@@ -227,6 +238,9 @@ pub fn load_config(path: &Path) -> Result<NodeConfig> {
     } else {
         NodeConfig::default()
     };
+    // 0.1.24 Store builds shipped the localhost default and saved it to disk.
+    // Only production defaults heal it, so local dev against localhost stays.
+    heal_server_url(&mut config, &default_server_url());
     if let Ok(url) = std::env::var("PEERWAY_SERVER_URL") {
         config.server_url = url;
     }
@@ -335,6 +349,23 @@ mod tests {
         config.language = "fr".into();
         config.normalize();
         assert_eq!(config.language, "es");
+    }
+
+    #[test]
+    fn loopback_server_url_heals_to_the_production_default() {
+        let mut config = NodeConfig {
+            server_url: "https://localhost:8443".into(),
+            insecure_tls: true,
+            ..NodeConfig::default()
+        };
+        heal_server_url(&mut config, "https://api.peerway.io");
+        assert_eq!(config.server_url, "https://api.peerway.io");
+        assert!(!config.insecure_tls);
+
+        // A real choice the user made is left alone.
+        config.server_url = "https://relay.example".into();
+        heal_server_url(&mut config, "https://api.peerway.io");
+        assert_eq!(config.server_url, "https://relay.example");
     }
 
     #[test]
