@@ -17,7 +17,7 @@ store = []
 tauri-build = { version = "2", features = [] }
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.62", features = ["ApplicationModel", "Foundation"] }
+windows = { version = "0.62", features = ["ApplicationModel", "Foundation", "Foundation_Collections", "Services_Store", "Win32_System_Com", "Win32_System_Recovery"] }
 peerway_node = { package = "peerway", path = "../../node" }
 peerway_core = { package = "peerway-core", path = "../../core" }
 tauri = { version = "2", features = ["tray-icon", "image-png"] }

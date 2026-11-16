@@ -188,7 +188,7 @@
     'Notificaciones en la app': 'In-app notifications',
     'Actualizaciones, transferencias y avisos importantes.': 'Updates, transfers and important alerts.',
     'Actualizaciones': 'Updates',
-  'Las actualizaciones se instalan desde Microsoft Store.': 'Updates are installed from Microsoft Store.',
+  'Las actualizaciones se instalan desde Microsoft Store cuando PeerWay no está en uso.': 'Updates are installed from Microsoft Store while PeerWay is not in use.',
     'Comprueba si hay una versión nueva. Tú decides cuándo instalarla.': 'Check whether a new version is available. You decide when to install it.',
     'Listo para comprobar.': 'Ready to check.',
     'Actualización de seguridad': 'Security update',

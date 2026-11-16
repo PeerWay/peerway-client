@@ -14,7 +14,7 @@ use peerway_node::state::{TransferView, UiEvent};
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -25,6 +25,9 @@ use tokio::runtime::Runtime;
 
 struct Engine {
     _runtime: Mutex<Option<Runtime>>,
+    /// Kept so the Store updater can tell whether a transfer is running.
+    #[cfg_attr(not(all(windows, feature = "store")), allow(dead_code))]
+    node: Option<Arc<Node>>,
 }
 
 #[derive(Clone, serde::Serialize)]
@@ -84,9 +87,10 @@ fn main() {
             setup_tray(app)?;
 
             match start_backend(app.handle().clone()) {
-                Ok((port, runtime)) => {
+                Ok((port, runtime, node)) => {
                     app.manage(Engine {
                         _runtime: Mutex::new(runtime),
+                        node,
                     });
                     let base = ui_url(port);
                     let url = match &launch_code {
@@ -494,10 +498,10 @@ fn refresh_tray(app: AppHandle) {
     }
 }
 
-fn start_backend(app: AppHandle) -> Result<(u16, Option<Runtime>)> {
+fn start_backend(app: AppHandle) -> Result<(u16, Option<Runtime>, Option<Arc<Node>>)> {
     let paths = Paths::discover()?;
     if let Some((port, _token)) = running_backend(&paths) {
-        return Ok((port, None));
+        return Ok((port, None, None));
     }
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -534,7 +538,7 @@ fn start_backend(app: AppHandle) -> Result<(u16, Option<Runtime>)> {
     let deadline = Instant::now() + Duration::from_secs(15);
     loop {
         if let Some((port, _token)) = running_backend(&paths) {
-            return Ok((port, Some(runtime)));
+            return Ok((port, Some(runtime), Some(node)));
         }
         if Instant::now() >= deadline {
             anyhow::bail!("el motor local no respondió en 15 segundos");
@@ -627,14 +631,44 @@ fn spawn_updater(app: AppHandle) {
     });
 }
 
+/// Store builds cannot update while the app is in use, so when no transfer is
+/// running the app installs the pending Store update silently. Deployment
+/// terminates the process and Windows reopens it at the new version.
 #[cfg(all(windows, feature = "store"))]
 fn spawn_updater(app: AppHandle) {
-    tauri::async_runtime::spawn(async move {
-        tokio::time::sleep(Duration::from_secs(45)).await;
-        loop {
-            let _ = check_store_update(&app, false, false).await;
-            tokio::time::sleep(Duration::from_secs(6 * 60 * 60)).await;
-        }
+    // WinRT handles are not Send, so this loop gets its own single-thread runtime.
+    std::thread::spawn(move || {
+        let runtime = match tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+        {
+            Ok(runtime) => runtime,
+            Err(error) => {
+                log_error(&format!("runtime de actualizaciones: {error:#}"));
+                return;
+            }
+        };
+        runtime.block_on(async move {
+            tokio::time::sleep(Duration::from_secs(45)).await;
+            loop {
+                let available = check_store_update(&app, false, false)
+                    .await
+                    .ok()
+                    .flatten()
+                    .is_some();
+                let auto = Paths::discover()
+                    .ok()
+                    .and_then(|paths| load_config(&paths.config).ok())
+                    .map(|config| config.auto_update)
+                    .unwrap_or(true);
+                if available && auto && app_is_idle(&app) {
+                    if let Err(error) = install_store_update_idle().await {
+                        log_error(&format!("actualización automática de Store: {error:#}"));
+                    }
+                }
+                tokio::time::sleep(Duration::from_secs(60 * 60)).await;
+            }
+        });
     });
 }
 
@@ -721,6 +755,78 @@ async fn check_store_update(
         announce_update(app, &info);
     }
     Ok(Some(info))
+}
+
+/// True when no transfer is active and the user is not looking at the window.
+#[cfg(all(windows, feature = "store"))]
+fn app_is_idle(app: &AppHandle) -> bool {
+    let focused = app
+        .get_webview_window("main")
+        .and_then(|window| window.is_focused().ok())
+        .unwrap_or(false);
+    if focused {
+        return false;
+    }
+    let Some(engine) = app.try_state::<Engine>() else {
+        return false;
+    };
+    let Some(node) = engine.node.as_ref() else {
+        return false;
+    };
+    !node.transfers().iter().any(|transfer| {
+        matches!(
+            transfer.status.as_str(),
+            "offered" | "connecting" | "accepted" | "waiting_accept" | "transferring"
+        )
+    })
+}
+
+/// Downloads and installs a pending Store update silently, then lets Windows
+/// reopen the app at the new version. Does nothing when the user disabled
+/// automatic Store updates or is on a metered network.
+#[cfg(all(windows, feature = "store"))]
+async fn install_store_update_idle() -> Result<()> {
+    use std::future::IntoFuture;
+    use windows::Services::Store::StoreContext;
+    use windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
+    use windows::Win32::System::Recovery::{
+        RegisterApplicationRestart, REGISTER_APPLICATION_RESTART_FLAGS,
+    };
+
+    // WinRT needs an apartment on this thread; ignore a mode already set.
+    let _ = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
+    let context = StoreContext::GetDefault().context("abriendo Microsoft Store")?;
+    let updates = context
+        .GetAppAndOptionalStorePackageUpdatesAsync()
+        .context("consultando actualizaciones de Microsoft Store")?
+        .into_future()
+        .await
+        .context("consultando actualizaciones de Microsoft Store")?;
+    if updates.Size().context("leyendo actualizaciones")? == 0 {
+        return Ok(());
+    }
+    if !context
+        .CanSilentlyDownloadStorePackageUpdates()
+        .context("leyendo la configuración de Microsoft Store")?
+    {
+        return Ok(());
+    }
+    // Registered before the install: the deployment terminates this process.
+    unsafe {
+        RegisterApplicationRestart(
+            &windows::core::HSTRING::from("--minimized"),
+            REGISTER_APPLICATION_RESTART_FLAGS(0),
+        )
+        .ok()
+        .context("registrando el reinicio automático")?;
+    }
+    context
+        .TrySilentDownloadAndInstallStorePackageUpdatesAsync(&updates)
+        .context("instalando la actualización de Microsoft Store")?
+        .into_future()
+        .await
+        .context("instalando la actualización de Microsoft Store")?;
+    Ok(())
 }
 
 #[cfg(all(windows, feature = "store"))]
