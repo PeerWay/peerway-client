@@ -645,11 +645,11 @@
     currentCode = s.code || '';
     renderCode();
     $('#rotateCodeBtn')?.classList.toggle('hidden', !!s.logged_in);
-    $('#versionText').textContent = s.version || '0.1.24';
-    $('#windowVersion').textContent = s.version || '0.1.24';
-    $('#aboutVersion').textContent = `v${s.version || '0.1.24'} · ${s.platform || ''}`;
+    $('#versionText').textContent = s.version || '0.1.25';
+    $('#windowVersion').textContent = s.version || '0.1.25';
+    $('#aboutVersion').textContent = `v${s.version || '0.1.25'} · ${s.platform || ''}`;
     const settingsVersion = $('#settingsVersion');
-    if (settingsVersion) settingsVersion.textContent = `v${s.version || '0.1.24'} · ${s.platform || ''}`;
+    if (settingsVersion) settingsVersion.textContent = `v${s.version || '0.1.25'} · ${s.platform || ''}`;
     $('#tempBanner')?.classList.toggle('hidden', !!s.logged_in);
     $('#accountName').textContent = s.logged_in
       ? (s.display_name || s.username || 'Cuenta')
