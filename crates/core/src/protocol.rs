@@ -94,6 +94,9 @@ pub struct AuthResponse {
     #[serde(default)]
     pub email_verified: bool,
     pub code: String,
+    /// Permanent account code shared by every device of the account.
+    #[serde(default)]
+    pub account_code: String,
     pub plan: Plan,
     pub plan_expires: Option<i64>,
     pub quota_bytes: u64,
@@ -110,6 +113,9 @@ pub struct MeResponse {
     #[serde(default)]
     pub email_verified: bool,
     pub code: String,
+    /// Permanent account code shared by every device of the account.
+    #[serde(default)]
+    pub account_code: String,
     pub plan: Plan,
     pub plan_expires: Option<i64>,
     pub quota_bytes: u64,
@@ -207,6 +213,9 @@ pub struct AnnounceResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PeerLookup {
     pub record: PeerRecord,
+    /// Account code to display and trust; equals the device code for temp peers.
+    #[serde(default)]
+    pub account_code: String,
     pub observed_v4: Option<String>,
     pub observed_v6: Option<String>,
     pub online: bool,

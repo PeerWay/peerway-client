@@ -420,7 +420,7 @@ async fn state_handler(State(state): State<Arc<Local>>) -> Json<serde_json::Valu
         "app": "PeerWay",
         "version": peerway_core::APP_VERSION,
         "platform": std::env::consts::OS,
-        "code": peerway_core::code::format(&node.code()),
+        "code": peerway_core::code::format(&node.display_code()),
         "device_name": config.device_name,
         "download_dir": config.download_dir,
         "server_online": node.server_online(),

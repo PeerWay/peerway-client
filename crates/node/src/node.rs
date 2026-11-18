@@ -238,6 +238,22 @@ impl Node {
         code::format(&self.code())
     }
 
+    /// Code the user shares: the account code when signed in, otherwise the
+    /// temporary code of this device.
+    pub fn display_code(&self) -> String {
+        self.session
+            .read()
+            .unwrap()
+            .as_ref()
+            .map(|session| session.account_code.clone())
+            .filter(|code| code::is_valid(code))
+            .unwrap_or_else(|| self.code())
+    }
+
+    pub fn formatted_display_code(&self) -> String {
+        code::format(&self.display_code())
+    }
+
     pub fn session(&self) -> Option<SessionData> {
         self.session.read().unwrap().clone()
     }
@@ -650,6 +666,7 @@ impl Node {
             email: me.email,
             email_verified: me.email_verified,
             code: me.code,
+            account_code: me.account_code,
             plan: me.plan,
             plan_expires: me.plan_expires,
             quota_bytes: me.quota_bytes,
@@ -666,6 +683,7 @@ impl Node {
             email: auth.email,
             email_verified: auth.email_verified,
             code: auth.code.clone(),
+            account_code: auth.account_code,
             plan: auth.plan,
             plan_expires: auth.plan_expires,
             quota_bytes: auth.quota_bytes,

@@ -308,6 +308,9 @@ pub struct SessionData {
     #[serde(default)]
     pub email_verified: bool,
     pub code: String,
+    /// Permanent account code shown to other people; empty on old sessions.
+    #[serde(default)]
+    pub account_code: String,
     pub plan: Plan,
     pub plan_expires: Option<i64>,
     pub quota_bytes: u64,

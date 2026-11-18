@@ -20,6 +20,9 @@ const OFFER_TIMEOUT: Duration = Duration::from_secs(600);
 
 struct Target {
     record: PeerRecord,
+    /// Code shown to the user and stored in the history: the account code when
+    /// the target belongs to an account.
+    display_code: String,
     lan_addrs: Vec<SocketAddr>,
     observed_v4: Option<SocketAddr>,
     observed_v6: Option<SocketAddr>,
@@ -88,7 +91,7 @@ struct Established {
 impl Node {
     async fn lookup_target(&self, input: &str) -> Result<Target> {
         let normalized = code::normalize(input).context("código de destino inválido")?;
-        if normalized == self.code() {
+        if normalized == self.code() || normalized == self.display_code() {
             bail!("no puedes enviarte archivos a ti mismo");
         }
 
@@ -118,12 +121,17 @@ impl Node {
         let mut observed_v6 = None;
         let mut online = false;
         let mut server_record = None;
+        let mut display_code = normalized.clone();
         if let Some(peer) = server_peer {
             peer.record
                 .verify()
                 .context("el registro del destino no es válido")?;
-            if peer.record.code != normalized {
+            let reported = code::normalize(&peer.account_code).unwrap_or_default();
+            if peer.record.code != normalized && reported != normalized {
                 bail!("el servidor devolvió un registro con otro código");
+            }
+            if !reported.is_empty() {
+                display_code = reported;
             }
             observed_v4 = peer.observed_v4.and_then(|s| s.parse().ok());
             observed_v6 = peer.observed_v6.and_then(|s| s.parse().ok());
@@ -148,6 +156,7 @@ impl Node {
         lan_addrs.dedup();
         Ok(Target {
             record,
+            display_code,
             lan_addrs,
             observed_v4,
             observed_v6,
@@ -206,7 +215,7 @@ impl Node {
         let mut view = TransferView::new(
             id.clone(),
             "send",
-            target.record.code.clone(),
+            target.display_code.clone(),
             target.record.device_name.clone(),
             files,
             total_bytes,
