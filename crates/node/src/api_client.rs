@@ -420,6 +420,44 @@ impl ApiClient {
         self.send_empty(request).await
     }
 
+    pub async fn create_offer(
+        &self,
+        offer: &OfferCreateRequest,
+    ) -> Result<OfferCreateResponse, ClientError> {
+        let request = self.post_json("/api/v1/offers", None, offer)?;
+        self.send_json(request).await
+    }
+
+    pub async fn claim_offer(
+        &self,
+        id: &str,
+        record: &PeerRecord,
+    ) -> Result<OfferClaimResponse, ClientError> {
+        let request = self.post_json(
+            &format!("/api/v1/offers/{id}/claim"),
+            None,
+            &OfferRecordRequest {
+                record: record.clone(),
+            },
+        )?;
+        self.send_json(request).await
+    }
+
+    pub async fn offer_status(
+        &self,
+        id: &str,
+        record: &PeerRecord,
+    ) -> Result<OfferStatusResponse, ClientError> {
+        let request = self.post_json(
+            &format!("/api/v1/offers/{id}/status"),
+            None,
+            &OfferRecordRequest {
+                record: record.clone(),
+            },
+        )?;
+        self.send_json(request).await
+    }
+
     pub async fn create_tunnel(
         &self,
         target_code: &str,

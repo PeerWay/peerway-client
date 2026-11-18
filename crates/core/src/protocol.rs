@@ -216,10 +216,55 @@ pub struct PeerLookup {
     /// Account code to display and trust; equals the device code for temp peers.
     #[serde(default)]
     pub account_code: String,
+    /// True when the account has more than one device online: the sender must
+    /// publish the offer so any of them can claim it.
+    #[serde(default)]
+    pub fanout: bool,
     pub observed_v4: Option<String>,
     pub observed_v6: Option<String>,
     pub online: bool,
     pub last_seen: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OfferCreateRequest {
+    pub offer_id: String,
+    pub target: String,
+    pub record: PeerRecord,
+    pub files: Vec<FileMeta>,
+    pub total_bytes: u64,
+    #[serde(default)]
+    pub comment: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OfferCreateResponse {
+    pub ok: bool,
+    pub recipients: u32,
+}
+
+/// Signed by the peer that claims or checks an offer.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OfferRecordRequest {
+    pub record: PeerRecord,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OfferClaimResponse {
+    pub granted: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OfferStatusResponse {
+    pub state: String,
+    #[serde(default)]
+    pub record: Option<PeerRecord>,
+    #[serde(default)]
+    pub observed_v4: Option<String>,
+    #[serde(default)]
+    pub observed_v6: Option<String>,
+    #[serde(default)]
+    pub online: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -276,6 +321,22 @@ pub enum SignalMessage {
         token: String,
         from: String,
         transfer_id: String,
+    },
+    /// An offer from an account with several devices online. Every device of
+    /// the target account receives it and one of them can claim it.
+    OfferIncoming {
+        offer_id: String,
+        /// Account code to display and trust.
+        from: String,
+        record: PeerRecord,
+        files: Vec<FileMeta>,
+        total_bytes: u64,
+        #[serde(default)]
+        comment: String,
+    },
+    /// Another device of this account claimed the offer first.
+    ClaimTaken {
+        offer_id: String,
     },
     PeerOffline {
         code: String,

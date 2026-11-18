@@ -23,6 +23,8 @@ struct Target {
     /// Code shown to the user and stored in the history: the account code when
     /// the target belongs to an account.
     display_code: String,
+    /// Several devices are online: publish the offer and let one claim it.
+    fanout: bool,
     lan_addrs: Vec<SocketAddr>,
     observed_v4: Option<SocketAddr>,
     observed_v6: Option<SocketAddr>,
@@ -122,6 +124,7 @@ impl Node {
         let mut online = false;
         let mut server_record = None;
         let mut display_code = normalized.clone();
+        let mut fanout = false;
         if let Some(peer) = server_peer {
             peer.record
                 .verify()
@@ -133,6 +136,7 @@ impl Node {
             if !reported.is_empty() {
                 display_code = reported;
             }
+            fanout = peer.fanout;
             observed_v4 = peer.observed_v4.and_then(|s| s.parse().ok());
             observed_v6 = peer.observed_v6.and_then(|s| s.parse().ok());
             online = peer.online;
@@ -157,11 +161,211 @@ impl Node {
         Ok(Target {
             record,
             display_code,
+            fanout,
             lan_addrs,
             observed_v4,
             observed_v6,
             online,
         })
+    }
+
+    /// Publishes the offer to every device of the account and waits for one to
+    /// claim it. Returns the target switched to the device that claimed it.
+    async fn publish_offer(
+        self: &Arc<Self>,
+        id: &str,
+        mut target: Target,
+        files: &[FileMeta],
+        total: u64,
+        comment: &str,
+    ) -> Result<Target> {
+        let record = self.refresh_record()?;
+        self.http
+            .create_offer(&peerway_core::protocol::OfferCreateRequest {
+                offer_id: id.to_string(),
+                target: target.display_code.clone(),
+                record: record.clone(),
+                files: files.to_vec(),
+                total_bytes: total,
+                comment: comment.to_string(),
+            })
+            .await
+            .context("publicando la oferta en el servidor")?;
+        self.update_transfer(id, |view| {
+            view.status = "waiting_accept".into();
+        });
+        let deadline = Instant::now() + Duration::from_secs(120);
+        while Instant::now() < deadline {
+            if self.is_canceled(id) {
+                bail!("cancelada");
+            }
+            tokio::time::sleep(Duration::from_secs(1)).await;
+            let Ok(status) = self.http.offer_status(id, &record).await else {
+                continue;
+            };
+            if status.state == "expired" {
+                bail!("nadie aceptó la transferencia a tiempo");
+            }
+            if status.state != "claimed" {
+                continue;
+            }
+            let Some(winner) = status.record else {
+                bail!("el dispositivo que aceptó ya no está conectado");
+            };
+            winner
+                .verify()
+                .context("el registro del destinatario no es válido")?;
+            target.lan_addrs = winner.lan_endpoints();
+            target.record = winner;
+            target.observed_v4 = status.observed_v4.and_then(|value| value.parse().ok());
+            target.observed_v6 = status.observed_v6.and_then(|value| value.parse().ok());
+            target.online = status.online;
+            self.update_transfer(id, |view| {
+                view.status = "connecting".into();
+            });
+            return Ok(target);
+        }
+        bail!("nadie aceptó la transferencia a tiempo")
+    }
+
+    /// Offer announced to every device of the target account. It is shown as a
+    /// normal pending transfer; accepting it claims it on the server.
+    pub(crate) async fn remote_offer(
+        self: Arc<Self>,
+        offer_id: String,
+        from: String,
+        record: PeerRecord,
+        files: Vec<FileMeta>,
+        total_bytes: u64,
+        comment: String,
+    ) {
+        if record.verify().is_err() {
+            return;
+        }
+        let views: Vec<FileView> = files
+            .iter()
+            .map(|file| FileView {
+                name: file.name.clone(),
+                size: file.size,
+            })
+            .collect();
+        let mut view = TransferView::new(
+            offer_id.clone(),
+            "receive",
+            from.clone(),
+            record.device_name.clone(),
+            views,
+            total_bytes,
+        );
+        view.status = "offered".into();
+        let comment: String = comment.chars().take(200).collect();
+        if !comment.trim().is_empty() {
+            view.comment = Some(comment.trim().to_string());
+        }
+        self.remote_offers.lock().unwrap().insert(
+            offer_id.clone(),
+            crate::node::RemoteOffer {
+                from: from.clone(),
+                record,
+                claimed: false,
+            },
+        );
+        self.upsert_transfer(view.clone());
+        let trusted = {
+            let config = self.config();
+            config.auto_accept_trusted && config.trusted_codes.contains(&from)
+        };
+        if trusted {
+            let node = self.clone();
+            let id = offer_id.clone();
+            tokio::spawn(async move {
+                let _ = node.claim_remote_offer(&id, false).await;
+            });
+        } else {
+            self.emit(UiEvent::Incoming {
+                transfer: view.clone(),
+            });
+            self.emit(UiEvent::Toast {
+                level: "info".into(),
+                message: format!(
+                    "{} quiere enviarte {} archivo(s)",
+                    view.peer_name,
+                    files.len()
+                ),
+            });
+        }
+    }
+
+    /// Claims the offer on the server. Only the first device of the account wins.
+    pub(crate) async fn claim_remote_offer(
+        self: &Arc<Self>,
+        id: &str,
+        remember: bool,
+    ) -> Result<()> {
+        let record = self.refresh_record()?;
+        let response = self.http.claim_offer(id, &record).await?;
+        if response.granted {
+            if let Some(entry) = self.remote_offers.lock().unwrap().get_mut(id) {
+                entry.claimed = true;
+            }
+            if remember {
+                if let Some(view) = self.transfer(id) {
+                    let _ = self.trust_code(&view.peer_code, true);
+                }
+            }
+            self.update_transfer(id, |view| {
+                view.status = "accepted".into();
+            });
+            self.emit(UiEvent::Toast {
+                level: "info".into(),
+                message: "Aceptada. Esperando la conexión del remitente.".into(),
+            });
+            // The sender may never reach this device; do not leave it waiting.
+            let node = self.clone();
+            let id = id.to_string();
+            tokio::spawn(async move {
+                tokio::time::sleep(Duration::from_secs(90)).await;
+                let waiting = node
+                    .transfer(&id)
+                    .map(|view| view.status == "accepted")
+                    .unwrap_or(false);
+                if waiting {
+                    node.update_transfer(&id, |view| {
+                        view.status = "failed".into();
+                        view.error = Some("el remitente no pudo conectar con este equipo".into());
+                        view.finished_at = Some(chrono::Utc::now().timestamp());
+                    });
+                    node.save_history();
+                }
+            });
+        } else {
+            self.remote_offers.lock().unwrap().remove(id);
+            self.update_transfer(id, |view| {
+                view.status = "taken".into();
+                view.finished_at = Some(chrono::Utc::now().timestamp());
+            });
+            self.save_history();
+            self.emit(UiEvent::Toast {
+                level: "info".into(),
+                message: "Esta transferencia se aceptó en otro dispositivo.".into(),
+            });
+        }
+        Ok(())
+    }
+
+    /// Another device of this account claimed the offer first.
+    pub(crate) fn mark_offer_taken(&self, id: &str) {
+        if self.remote_offers.lock().unwrap().remove(id).is_some() {
+            self.update_transfer(id, |view| {
+                view.status = "taken".into();
+                view.finished_at = Some(chrono::Utc::now().timestamp());
+            });
+            self.save_history();
+            self.emit(UiEvent::Toast {
+                level: "info".into(),
+                message: "Esta transferencia se aceptó en otro dispositivo.".into(),
+            });
+        }
     }
 
     pub async fn send_files(
@@ -246,12 +450,17 @@ impl Node {
     async fn run_send(
         self: &Arc<Self>,
         id: String,
-        target: Target,
+        mut target: Target,
         local: Vec<(PathBuf, FileMeta)>,
         comment: String,
     ) -> Result<()> {
         let files: Vec<FileMeta> = local.iter().map(|(_, m)| m.clone()).collect();
         let total: u64 = files.iter().map(|f| f.size).sum();
+        if target.fanout {
+            target = self
+                .publish_offer(&id, target, &files, total, &comment)
+                .await?;
+        }
         let mut established = self.establish(&target, &id).await?;
         if self.is_canceled(&id) {
             return Ok(());
@@ -672,7 +881,22 @@ impl Node {
             bail!("metadatos de transferencia inválidos");
         }
 
-        let duplicate = {
+        // A fan-out offer is already registered here: the user accepted it on
+        // this device, so the P2P connection is expected and auto-accepted.
+        let remote = self
+            .remote_offers
+            .lock()
+            .unwrap()
+            .remove(&offer.transfer_id);
+        if let Some(remote) = &remote {
+            if remote.record.ed25519_pub != offer.sender_record.ed25519_pub {
+                bail!("la oferta no viene del remitente anunciado");
+            }
+        }
+
+        let duplicate = if remote.is_some() {
+            None
+        } else {
             let transfers = self.transfers.read().unwrap();
             transfers
                 .get(&offer.transfer_id)
@@ -700,21 +924,35 @@ impl Node {
                 size: f.size,
             })
             .collect();
+        let already_accepted = remote
+            .as_ref()
+            .map(|remote| remote.claimed)
+            .unwrap_or(false);
+        let display_code = remote
+            .as_ref()
+            .map(|remote| remote.from.clone())
+            .unwrap_or_else(|| offer.sender_record.code.clone());
         let mut view = TransferView::new(
             offer.transfer_id.clone(),
             "receive",
-            offer.sender_record.code.clone(),
+            display_code.clone(),
             offer.sender_record.device_name.clone(),
             files,
             offer.total_bytes,
         );
         let trusted = {
             let config = self.config();
-            config.auto_accept_trusted && config.trusted_codes.contains(&offer.sender_record.code)
+            config.auto_accept_trusted && config.trusted_codes.contains(&display_code)
         };
-        // Trusted senders skip the offer step entirely: if the transfer were
-        // stored as "offered", the UI would show the acceptance banner anyway.
-        view.status = if trusted { "transferring" } else { "offered" }.into();
+        // Trusted senders and offers already accepted on this device skip the
+        // prompt; the file still arrives only here.
+        let skip_offer = trusted || already_accepted;
+        view.status = if skip_offer {
+            "transferring"
+        } else {
+            "offered"
+        }
+        .into();
         view.channel = Some(method.label().to_string());
         view.method = Some(method.key().to_string());
         // Peer-supplied text: truncate before it reaches the UI.
@@ -725,7 +963,7 @@ impl Node {
         self.upsert_transfer(view.clone());
         let _ = self.cancel_token(&offer.transfer_id);
 
-        if trusted {
+        if skip_offer {
             self.emit(UiEvent::Incoming {
                 transfer: view.clone(),
             });
@@ -750,7 +988,7 @@ impl Node {
             });
         }
 
-        let accepted = if trusted {
+        let accepted = if skip_offer {
             true
         } else {
             let (tx, rx) = tokio::sync::oneshot::channel();

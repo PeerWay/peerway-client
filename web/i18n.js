@@ -261,6 +261,7 @@
     'Pendiente': 'Pending',
     'Esperando aceptación': 'Waiting for acceptance',
     'Aceptada': 'Accepted',
+  'Aceptada en otro equipo': 'Accepted on another device',
     'Transfiriendo': 'Transferring',
     'Completado': 'Completed',
     'Falló': 'Failed',

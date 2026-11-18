@@ -97,6 +97,7 @@
     offered: ['Pendiente', 'amber'],
     waiting_accept: ['Esperando aceptación', 'amber'],
     accepted: ['Aceptada', 'teal'],
+    taken: ['Aceptada en otro equipo', ''],
     transferring: ['Transfiriendo', 'teal'],
     completed: ['Completado', 'green'],
     failed: ['Falló', 'red'],

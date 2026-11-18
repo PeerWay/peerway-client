@@ -83,6 +83,15 @@ async fn run_once(node: Arc<Node>) -> Result<()> {
                                     }
                                 });
                             }
+                            Ok(SignalMessage::OfferIncoming { offer_id, from, record, files, total_bytes, comment }) => {
+                                let node = node.clone();
+                                tokio::spawn(async move {
+                                    node.remote_offer(offer_id, from, record, files, total_bytes, comment).await;
+                                });
+                            }
+                            Ok(SignalMessage::ClaimTaken { offer_id }) => {
+                                node.mark_offer_taken(&offer_id);
+                            }
                             Ok(SignalMessage::Ping) => {
                                 let _ = ws.send(Message::Text("{\"type\":\"ping\"}".into())).await;
                             }

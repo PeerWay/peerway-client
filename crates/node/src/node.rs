@@ -23,6 +23,14 @@ pub(crate) struct PendingDecision {
     pub tx: oneshot::Sender<bool>,
 }
 
+/// Offer announced by the server to every device of the target account. The
+/// P2P connection only arrives after one device claims it.
+pub(crate) struct RemoteOffer {
+    pub from: String,
+    pub record: PeerRecord,
+    pub claimed: bool,
+}
+
 struct TelemetryCounts {
     completed: u64,
     failed: u64,
@@ -48,6 +56,7 @@ pub struct Node {
     pub(crate) shares: Mutex<HashMap<String, crate::share::Share>>,
     pub(crate) cancels: Mutex<HashMap<String, CancellationToken>>,
     pub(crate) pending: Mutex<HashMap<String, PendingDecision>>,
+    pub(crate) remote_offers: Mutex<HashMap<String, RemoteOffer>>,
     pub(crate) events: broadcast::Sender<UiEvent>,
     pub(crate) http: ApiClient,
     pub(crate) signal_notify: Notify,
@@ -138,6 +147,7 @@ impl Node {
             shares: Mutex::new(HashMap::new()),
             cancels: Mutex::new(HashMap::new()),
             pending: Mutex::new(HashMap::new()),
+            remote_offers: Mutex::new(HashMap::new()),
             events,
             http,
             signal_notify: Notify::new(),
@@ -853,7 +863,20 @@ impl Node {
         self.cancels.lock().unwrap().remove(id);
     }
 
-    pub fn accept_transfer(&self, id: &str, remember: bool) -> Result<()> {
+    pub fn accept_transfer(self: &Arc<Self>, id: &str, remember: bool) -> Result<()> {
+        if self.remote_offers.lock().unwrap().contains_key(id) {
+            let node = self.clone();
+            let id = id.to_string();
+            tokio::spawn(async move {
+                if let Err(error) = node.claim_remote_offer(&id, remember).await {
+                    node.emit(UiEvent::Toast {
+                        level: "error".into(),
+                        message: format!("{error:#}"),
+                    });
+                }
+            });
+            return Ok(());
+        }
         let pending = self.pending.lock().unwrap().remove(id);
         if let Some(pending) = pending {
             if remember {
@@ -870,6 +893,14 @@ impl Node {
     }
 
     pub fn decline_transfer(&self, id: &str) -> Result<()> {
+        if self.remote_offers.lock().unwrap().remove(id).is_some() {
+            self.update_transfer(id, |view| {
+                view.status = "declined".into();
+                view.finished_at = Some(chrono::Utc::now().timestamp());
+            });
+            self.save_history();
+            return Ok(());
+        }
         let pending = self.pending.lock().unwrap().remove(id);
         if let Some(pending) = pending {
             let _ = pending.tx.send(false);
@@ -885,6 +916,7 @@ impl Node {
     }
 
     pub fn cancel_transfer(&self, id: &str) -> Result<()> {
+        self.remote_offers.lock().unwrap().remove(id);
         if let Some(token) = self.cancels.lock().unwrap().get(id).cloned() {
             token.cancel();
         }
