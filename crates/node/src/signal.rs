@@ -92,6 +92,9 @@ async fn run_once(node: Arc<Node>) -> Result<()> {
                             Ok(SignalMessage::ClaimTaken { offer_id }) => {
                                 node.mark_offer_taken(&offer_id);
                             }
+                            Ok(SignalMessage::SenderApproved { offer_id }) => {
+                                node.mark_sender_approved(&offer_id);
+                            }
                             Ok(SignalMessage::Ping) => {
                                 let _ = ws.send(Message::Text("{\"type\":\"ping\"}".into())).await;
                             }

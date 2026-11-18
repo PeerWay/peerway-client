@@ -443,6 +443,17 @@ impl ApiClient {
         self.send_json(request).await
     }
 
+    pub async fn approve_offer(&self, id: &str, record: &PeerRecord) -> Result<(), ClientError> {
+        let request = self.post_json(
+            &format!("/api/v1/offers/{id}/approve-sender"),
+            None,
+            &OfferRecordRequest {
+                record: record.clone(),
+            },
+        )?;
+        self.send_empty(request).await
+    }
+
     pub async fn offer_status(
         &self,
         id: &str,

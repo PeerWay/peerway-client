@@ -267,6 +267,7 @@ impl Node {
             crate::node::RemoteOffer {
                 from: from.clone(),
                 record,
+                approved: false,
                 claimed: false,
             },
         );
@@ -303,6 +304,21 @@ impl Node {
         remember: bool,
     ) -> Result<()> {
         let record = self.refresh_record()?;
+        // First decision: approve the sender. It is idempotent and the other
+        // devices learn about it, so any of them can claim the file afterwards.
+        let approved = self
+            .remote_offers
+            .lock()
+            .unwrap()
+            .get(id)
+            .map(|offer| offer.approved)
+            .unwrap_or(false);
+        if !approved {
+            self.http.approve_offer(id, &record).await?;
+            if let Some(entry) = self.remote_offers.lock().unwrap().get_mut(id) {
+                entry.approved = true;
+            }
+        }
         let response = self.http.claim_offer(id, &record).await?;
         if response.granted {
             if let Some(entry) = self.remote_offers.lock().unwrap().get_mut(id) {
@@ -365,6 +381,13 @@ impl Node {
                 level: "info".into(),
                 message: "Esta transferencia se aceptó en otro dispositivo.".into(),
             });
+        }
+    }
+
+    /// Another device approved the sender for this offer.
+    pub(crate) fn mark_sender_approved(&self, id: &str) {
+        if let Some(entry) = self.remote_offers.lock().unwrap().get_mut(id) {
+            entry.approved = true;
         }
     }
 

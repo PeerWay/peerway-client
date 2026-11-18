@@ -338,6 +338,10 @@ pub enum SignalMessage {
     ClaimTaken {
         offer_id: String,
     },
+    /// The sender was approved for this offer, so any device can claim the file.
+    SenderApproved {
+        offer_id: String,
+    },
     PeerOffline {
         code: String,
     },

@@ -28,6 +28,7 @@ pub(crate) struct PendingDecision {
 pub(crate) struct RemoteOffer {
     pub from: String,
     pub record: PeerRecord,
+    pub approved: bool,
     pub claimed: bool,
 }
 
