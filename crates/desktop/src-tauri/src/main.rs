@@ -647,6 +647,18 @@ fn log_error(message: &str) {
 }
 
 #[cfg(not(feature = "store"))]
+fn has_active_transfers(app: &AppHandle) -> bool {
+    app.try_state::<Engine>()
+        .and_then(|engine| {
+            engine
+                .node
+                .as_ref()
+                .map(|node| node.transfers().iter().any(|transfer| transfer.is_active()))
+        })
+        .unwrap_or(false)
+}
+
+#[cfg(not(feature = "store"))]
 fn spawn_updater(app: AppHandle) {
     if cfg!(feature = "store") {
         return;
@@ -661,10 +673,18 @@ fn spawn_updater(app: AppHandle) {
                 .map(|config| config.auto_update)
                 .unwrap_or(true);
             let result = if auto {
-                check_updates(&app, false, false).await
+                // A security update installs by itself, but never in the middle
+                // of a transfer.
+                match check_updates(&app, false, false).await {
+                    Ok(Some(info)) if info.security && !has_active_transfers(&app) => {
+                        check_updates(&app, true, false).await
+                    }
+                    other => other,
+                }
             } else {
                 Ok(None)
             };
+            let pending_security = matches!(&result, Ok(Some(info)) if info.security);
             let wait = if result.is_err() {
                 // Retry soon after transient network/manifest failures and back
                 // off to the normal six-hour interval once it works again.
@@ -675,6 +695,9 @@ fn spawn_updater(app: AppHandle) {
                     3 => 60 * 60,
                     _ => 6 * 60 * 60,
                 }
+            } else if pending_security {
+                failures = 0;
+                10 * 60
             } else {
                 failures = 0;
                 6 * 60 * 60
@@ -748,14 +771,15 @@ async fn check_store_update(
         let availability = result
             .Availability()
             .context("consultando Microsoft Store")?;
-        Ok::<_, anyhow::Error>(
+        Ok::<_, anyhow::Error>((
             availability == PackageUpdateAvailability::Available
                 || availability == PackageUpdateAvailability::Required,
-        )
+            availability == PackageUpdateAvailability::Required,
+        ))
     }
     .await;
 
-    let available = match available {
+    let (available, required) = match available {
         Ok(value) => value,
         Err(error) => {
             log_error(&format!("store update: {error:#}"));
@@ -789,7 +813,7 @@ async fn check_store_update(
 
     let info = UpdateInfo {
         version: "Store".into(),
-        security: false,
+        security: required,
         store: true,
     };
     if let Some(state) = app.try_state::<UpdateMenu>() {

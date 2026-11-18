@@ -30,7 +30,7 @@ PeerWay is in free beta. The desktop client is open source (Apache-2.0); the ser
 
 ## What's new in this version
 
-First release on Microsoft Store. Includes code-based direct transfers, trusted contacts, local network discovery, multi-recipient sends, browser receiving, and update notices from Microsoft Store.
+One code for all your devices: the send reaches every connected device and only one receives it. Manage and revoke devices from your account, mark one as primary and hide the computer name. Fixes the server connection on new Microsoft Store installs.
 
 ## Product features
 

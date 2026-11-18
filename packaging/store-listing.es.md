@@ -30,7 +30,7 @@ PeerWay está en beta gratuita. El cliente de escritorio es de código abierto (
 
 ## Novedades de esta versión
 
-Primera versión en Microsoft Store. Incluye transferencia directa con códigos, contactos de confianza, descubrimiento en red local, envío a varios destinatarios, recepción desde el navegador y avisos de actualización desde Microsoft Store.
+Un solo código para todos tus equipos: el envío llega a todos los conectados y solo uno lo recibe. Gestiona y revoca dispositivos desde tu cuenta, marca uno como principal y oculta el nombre del equipo. Corrige la conexión al servidor en instalaciones nuevas de Microsoft Store.
 
 ## Características del producto
 
