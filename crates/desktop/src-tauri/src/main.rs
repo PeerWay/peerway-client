@@ -884,8 +884,8 @@ async fn install_store_update_idle() -> Result<()> {
 
 #[cfg(all(windows, feature = "store"))]
 fn open_store() -> Result<()> {
-    // shortcut: opens the Store updates page; switch to the product page once the Store ID exists.
-    open::that("ms-windows-store://downloadsandupdates").context("abriendo Microsoft Store")
+    // Product page: the user sees Update or Open right there.
+    open::that("ms-windows-store://pdp/?productid=9N9KC0BBDNR5").context("abriendo Microsoft Store")
 }
 
 async fn check_updates(
