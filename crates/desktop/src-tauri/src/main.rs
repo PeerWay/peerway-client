@@ -59,8 +59,11 @@ fn main() {
     std::env::set_var("PEERWAY_STORE", "1");
     apply_saved_autostart();
     let args: Vec<String> = std::env::args().collect();
-    let minimized = args.iter().any(|arg| arg == "--minimized");
     let launch_code = deep_link_code(&args);
+    // The MSIX StartupTask cannot pass "--minimized", so a launch right after
+    // logon is the autostart entry. A deep link always shows the window.
+    let minimized = args.iter().any(|arg| arg == "--minimized")
+        || (launch_code.is_none() && started_at_logon());
 
     let result = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
@@ -343,6 +346,56 @@ fn deep_link_code(args: &[String]) -> Option<String> {
         }
     }
     None
+}
+
+/// The MSIX StartupTask cannot pass arguments, so a process started seconds
+/// after logon is treated as the autostart entry and opens in the tray.
+/// shortcut: a manual launch within two minutes of logon also opens hidden;
+/// upgrade to a separate launcher executable only if that becomes a problem.
+#[cfg(all(windows, feature = "store"))]
+fn started_at_logon() -> bool {
+    use windows::Win32::System::RemoteDesktop::{
+        WTSFreeMemory, WTSLogonTime, WTSQuerySessionInformationW, WTS_CURRENT_SERVER_HANDLE,
+        WTS_CURRENT_SESSION,
+    };
+
+    let mut buffer = windows::core::PWSTR::null();
+    let mut size = 0u32;
+    if unsafe {
+        WTSQuerySessionInformationW(
+            Some(WTS_CURRENT_SERVER_HANDLE),
+            WTS_CURRENT_SESSION,
+            WTSLogonTime,
+            &mut buffer,
+            &mut size,
+        )
+    }
+    .is_err()
+        || buffer.is_null()
+        || size < 8
+    {
+        return false;
+    }
+    let logon = unsafe { std::ptr::read_unaligned(buffer.0 as *const i64) };
+    unsafe { WTSFreeMemory(buffer.0 as *mut _) };
+    let logon_unix = filetime_to_unix(logon);
+    let now_unix = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_secs() as i64)
+        .unwrap_or(logon_unix);
+    now_unix - logon_unix <= 120
+}
+
+#[cfg(not(all(windows, feature = "store")))]
+fn started_at_logon() -> bool {
+    // Unpackaged builds get "--minimized" from the autostart entry.
+    false
+}
+
+#[cfg_attr(not(all(windows, feature = "store")), allow(dead_code))]
+fn filetime_to_unix(filetime: i64) -> i64 {
+    // FILETIME counts 100 ns ticks from 1601-01-01.
+    filetime / 10_000_000 - 11_644_473_600
 }
 
 /// Show the window already pointed at a code, so the send form is prefilled.
@@ -1000,5 +1053,16 @@ fn announce_update_error(app: &AppHandle, message: &str) {
         let _ = window.eval(&format!(
             "window.dispatchEvent(new CustomEvent('peerway-update-error', {{ detail: {{ message: {message} }} }}));"
         ));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::filetime_to_unix;
+
+    #[test]
+    fn filetime_converts_to_unix_seconds() {
+        assert_eq!(filetime_to_unix(0), -11_644_473_600);
+        assert_eq!(filetime_to_unix(116_444_736_000_000_000), 0);
     }
 }
