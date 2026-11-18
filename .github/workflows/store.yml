@@ -1,9 +1,11 @@
 name: Publish to Microsoft Store
 
-# Manual only: bump the version first (scripts/set-version.ps1 0.1.25), commit,
-# then run this workflow. The MSIX version must be higher than the last one
-# submitted to the Store.
+# Runs on version tags (v0.1.25) and on demand. The MSIX version must be higher
+# than the last one submitted, so bump tauri.conf.json first and tag exactly
+# that version.
 on:
+  push:
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -16,6 +18,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+
+      - name: Check the tag matches tauri.conf.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $version = (Get-Content "crates/desktop/src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json).version
+          $tag = "${{ github.ref_name }}".TrimStart("v")
+          if ($tag -ne $version) {
+            throw "El tag $tag no coincide con tauri.conf.json ($version)."
+          }
 
       - name: Build signed MSIX
         shell: pwsh
