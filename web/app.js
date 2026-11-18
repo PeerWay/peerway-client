@@ -855,6 +855,7 @@
     if (force) settingsDirty = false;
     if (settingsDirty && !force) return;
     $('#setDevice').value = state.device_name || '';
+    $('#setHiddenName').checked = !!state.hide_device_name;
     $('#setDownload').value = state.download_dir || '';
     $('#setAutoTrust').checked = !!state.auto_accept_trusted;
     $('#setLan').checked = !!state.lan_discovery;
@@ -2064,6 +2065,7 @@
   async function saveSettings() {
     const config = {
       device_name: $('#setDevice').value.trim(),
+      hide_device_name: $('#setHiddenName').checked,
       download_dir: $('#setDownload').value.trim(),
       auto_accept_trusted: $('#setAutoTrust').checked,
       lan_discovery: $('#setLan').checked,
@@ -2561,7 +2563,7 @@
     });
 
     const markDirty = () => { settingsDirty = true; };
-    ['setDevice', 'setDownload', 'setAutoTrust', 'setLan', 'setAutoUpdate', 'setChangelog', 'setAutostart', 'setTelemetry', 'setNotifications', 'setNotifyUpdates', 'setNotifyTransfers']
+    ['setDevice', 'setHiddenName', 'setDownload', 'setAutoTrust', 'setLan', 'setAutoUpdate', 'setChangelog', 'setAutostart', 'setTelemetry', 'setNotifications', 'setNotifyUpdates', 'setNotifyTransfers']
       .forEach((id) => document.getElementById(id).addEventListener('input', markDirty));
     $('#setNotifications').addEventListener('change', syncNotificationControls);
     $('#saveSettings').addEventListener('click', saveSettings);

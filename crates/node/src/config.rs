@@ -9,6 +9,9 @@ pub struct NodeConfig {
     pub server_url: String,
     pub insecure_tls: bool,
     pub device_name: String,
+    /// Announce a generic name instead of the computer name.
+    #[serde(default)]
+    pub hide_device_name: bool,
     pub download_dir: String,
     pub ui_port: u16,
     #[serde(default = "default_quic_port")]
@@ -142,6 +145,7 @@ impl Default for NodeConfig {
             server_url: default_server_url(),
             insecure_tls: default_insecure_tls(),
             device_name,
+            hide_device_name: false,
             download_dir,
             ui_port: 8787,
             rendezvous_port: default_quic_port(),

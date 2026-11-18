@@ -119,7 +119,11 @@ impl Node {
             port_v4,
             port_v6,
             lan_ips,
-            config.device_name.clone(),
+            if config.hide_device_name {
+                "PeerWay".to_string()
+            } else {
+                config.device_name.clone()
+            },
         )?;
         let http = ApiClient::new(
             &config.server_url,
@@ -372,7 +376,11 @@ impl Node {
             self.port_v4,
             self.port_v6,
             local_lan_ips(),
-            config.device_name,
+            if config.hide_device_name {
+                "PeerWay".to_string()
+            } else {
+                config.device_name
+            },
         )?;
         *self.record.write().unwrap() = record.clone();
         Ok(record)

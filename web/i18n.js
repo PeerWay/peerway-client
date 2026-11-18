@@ -175,6 +175,8 @@
     'Nombre visible y carpeta de descargas.': 'Display name and downloads folder.',
     'Nombre del equipo': 'Device name',
     'Carpeta de descargas': 'Downloads folder',
+  'Ocultar el nombre del equipo': 'Hide the device name',
+  'Los demás verán “PeerWay” en lugar del nombre de tu equipo.': 'Others will see “PeerWay” instead of your device name.',
     'Aceptar automáticamente contactos de confianza': 'Automatically accept trusted contacts',
     'Solo para códigos que agregues como confiables.': 'Only for codes you add as trusted.',
     'Descubrimiento en la red local': 'Local network discovery',

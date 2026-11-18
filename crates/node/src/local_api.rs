@@ -422,6 +422,7 @@ async fn state_handler(State(state): State<Arc<Local>>) -> Json<serde_json::Valu
         "platform": std::env::consts::OS,
         "code": peerway_core::code::format(&node.display_code()),
         "device_name": config.device_name,
+        "hide_device_name": config.hide_device_name,
         "download_dir": config.download_dir,
         "server_online": node.server_online(),
         "last_error": node.last_error(),
@@ -516,6 +517,8 @@ fn default_true() -> bool {
 struct SettingsRequest {
     device_name: String,
     download_dir: String,
+    #[serde(default)]
+    hide_device_name: bool,
     auto_accept_trusted: bool,
     lan_discovery: bool,
     auto_update: bool,
@@ -966,6 +969,7 @@ async fn settings_handler(
     }
     let mut config = state.node.config();
     config.device_name = req.device_name.trim().to_string();
+    config.hide_device_name = req.hide_device_name;
     config.download_dir = req.download_dir.trim().to_string();
     config.auto_accept_trusted = req.auto_accept_trusted;
     config.lan_discovery = req.lan_discovery;
